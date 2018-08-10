@@ -1,0 +1,24 @@
+<!--
+  ~  Copyright (c) 2018, salesforce.com, inc.
+  ~  All rights reserved.
+  ~  SPDX-License-Identifier: BSD-3-Clause
+  ~  For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
+  ~
+  -->
+
+<assembly xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns="http://maven.apache.org/ASSEMBLY/2.0.0"
+  xsi:schemaLocation="http://maven.apache.org/ASSEMBLY/2.0.0 http://maven.apache.org/xsd/assembly-2.0.0.xsd">
+  <!-- Assembly for distributing run control scripts: bin/ and config/ -->
+  <id>run</id>
+  <formats>
+    <format>zip</format>
+  </formats>
+  <includeBaseDirectory>false</includeBaseDirectory>
+  <fileSets>
+    <fileSet>
+      <directory>${dist.dir}</directory>
+      <outputDirectory></outputDirectory>
+    </fileSet>
+  </fileSets>
+</assembly>
