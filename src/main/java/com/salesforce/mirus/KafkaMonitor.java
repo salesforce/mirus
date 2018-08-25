@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The KafkaMonitor thread is started by {@link MirusSourceConnector} and polls the source and
- * destination clusters to maintain an up-to-date list of partitions eligable for mirroring. When a
+ * destination clusters to maintain an up-to-date list of partitions eligible for mirroring. When a
  * change is detected the thread requests that tasks for this source are reconfigured. Partitions
  * that match the configured whitelist are validated to ensure they exist in both source and the
  * destination cluster.
