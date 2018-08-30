@@ -200,6 +200,10 @@ can also be configured using a `producer.` prefix on the standard
 [Kafka Producer properties](https://kafka.apache.org/documentation/#producerconfigs).
 
 
+## Developer Info
+
+To preform a release: `mvn release:prepare release:perform`
+
 # Discussion
 
 Questions or comments can also be posted on the Mirus Github issues page.
