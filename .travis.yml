@@ -1,0 +1,24 @@
+# On Travis set: SONATYPE_USERNAME, SONATYPE_PASSWORD, GPG_NAME, GPG_EMAIL
+
+language: java
+jdk: oraclejdk8
+
+cache:
+  directories:
+  - $HOME/.m2
+
+before_install: source .travis.gpg.sh
+
+install: mvn install -settings .travis.settings.xml -DskipTests=true -Dmaven.javadoc.skip=true -B -V
+
+script: mvn test --settings .travis.settings.xml -B
+
+deploy:
+  provider: script
+  script: mvn --settings .travis.settings.xml clean deploy
+  skip_cleanup: true
+  on:
+    # deploy snapshots and tagged releases
+    #all_branches: true
+    # or to only deploy tagged releases (i.e. not snapshots)
+    tags: true
