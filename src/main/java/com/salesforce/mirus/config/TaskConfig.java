@@ -29,7 +29,12 @@ public class TaskConfig {
     return TaskConfigDefinition.configDef().names();
   }
 
-  /** Filter to remove any properties not used by TaskConfig */
+  /**
+   * Filter to remove any properties not used by TaskConfig
+   *
+   * @param properties the incoming Source configuration properties
+   * @return the properties accepted by TaskConfig
+   */
   public static Map<String, String> filterProperties(Map<String, String> properties) {
     Map<String, String> result = new HashMap<>();
     Set<String> taskKeys = keys();

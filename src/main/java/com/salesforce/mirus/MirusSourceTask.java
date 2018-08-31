@@ -36,7 +36,7 @@ interface ConsumerFactory {
 }
 
 /**
- * MirusSourceTask is a {@Link SourceTask} implementation that knows how to mirror a set of
+ * MirusSourceTask is a {@link SourceTask} implementation that knows how to mirror a set of
  * partitions between two Kafka clusters. On startup it instantiates a new {@link KafkaConsumer}
  * instance using the "consumer.*" properties in the Source configuration object {@link
  * com.salesforce.mirus.config.SourceConfig}. It then seeks the current offsets for each partition
