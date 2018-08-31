@@ -106,7 +106,6 @@
                 <version>2.5.3</version>
                 <configuration>
                     <tagNameFormat>v@{project.version}</tagNameFormat>
-                    <preparationGoals>replacer:replace scm:checkin</preparationGoals>
                     <goals>initialize</goals>
                 </configuration>
             </plugin>
