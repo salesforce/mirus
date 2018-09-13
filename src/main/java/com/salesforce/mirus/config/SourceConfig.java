@@ -51,4 +51,8 @@ public class SourceConfig {
   public Map<String, String> originalsStrings() {
     return simpleConfig.originalsStrings();
   }
+
+  public boolean getEnableBufferFlushing() {
+    return simpleConfig.getBoolean(SourceConfigDefinition.ENABLE_BUFFER_FLUSHING.key);
+  }
 }

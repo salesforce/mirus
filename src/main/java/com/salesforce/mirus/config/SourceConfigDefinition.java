@@ -67,7 +67,13 @@ public enum SourceConfigDefinition {
       ConfigDef.Type.STRING,
       "",
       ConfigDef.Importance.HIGH,
-      "Comma-separated list of destination bootstrap server endpoints in standard format. This is used by the Kafka Monitor for run-time topic validation");
+      "Comma-separated list of destination bootstrap server endpoints in standard format. This is used by the Kafka Monitor for run-time topic validation"),
+  ENABLE_BUFFER_FLUSHING(
+      "enable.buffer.flushing",
+      ConfigDef.Type.BOOLEAN,
+      false,
+      ConfigDef.Importance.MEDIUM,
+      "Boolean to decide whether Producer buffer should flush when it gets too full or not");
 
   String key;
   ConfigDef.Type type;

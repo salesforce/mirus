@@ -59,6 +59,7 @@ public class MirusSourceTask extends SourceTask {
   private Consumer<byte[], byte[]> consumer;
   private AtomicBoolean shutDown = new AtomicBoolean(false);
   private boolean enablePartitionMatching = false;
+  private boolean enableBufferFlushing = false;
 
   @SuppressWarnings("unused")
   public MirusSourceTask() {
@@ -91,6 +92,7 @@ public class MirusSourceTask extends SourceTask {
     this.destinationTopicNamePrefix = config.getDestinationTopicNamePrefix();
     this.destinationTopicNameSuffix = config.getDestinationTopicNameSuffix();
     this.enablePartitionMatching = config.getEnablePartitionMatching();
+    this.enableBufferFlushing = config.getEnableBufferFlushing();
 
     logger.debug("Task starting with partitions: {}", config.getInternalTaskPartitions());
 
