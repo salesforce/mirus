@@ -91,20 +91,22 @@ public class HerderStatusMonitor implements Runnable {
 
   private void processConnector(String connectorName) {
     ConnectorStateInfo stateInfo = herder.connectorStatus(connectorName);
-    if (stateInfo.connector().state().equals(ConnectorStatus.State.FAILED.toString())) {
-      connectorJmxReport.incrementConnectorRestartAttempts(connectorName);
-      if (autoRestartConnectorEnabled) {
-        logger.info("Attempting to restart connector {}", connectorName);
-        herder.restartConnector(
-            connectorName,
-            (error, _void) -> {
-              if (error != null) {
-                logger.warn("Failed to restart connector {}", connectorName, error);
-              }
-            });
+    if (workerId.equals(stateInfo.connector().workerId())) {
+      if (stateInfo.connector().state().equals(ConnectorStatus.State.FAILED.toString())) {
+        connectorJmxReport.incrementConnectorRestartAttempts(connectorName);
+        if (autoRestartConnectorEnabled) {
+          logger.info("Attempting to restart connector {}", connectorName);
+          herder.restartConnector(
+              connectorName,
+              (error, _void) -> {
+                if (error != null) {
+                  logger.warn("Failed to restart connector {}", connectorName, error);
+                }
+              });
+        }
+      } else {
+        herder.connectorInfo(connectorName, this::onConnectInfo);
       }
-    } else {
-      herder.connectorInfo(connectorName, this::onConnectInfo);
     }
   }
 
@@ -119,15 +121,12 @@ public class HerderStatusMonitor implements Runnable {
   }
 
   private void processTask(ConnectorTaskId taskId, TaskState taskStatus) {
-
-    if (workerId.equals(taskStatus.workerId())) {
-      taskJmxReporter.updateMetrics(taskId, taskStatus);
-      if (taskStatus.state().equalsIgnoreCase(TaskStatus.State.FAILED.toString())) {
-        connectorJmxReport.incrementTotalFailedCount(taskId.connector());
-        if (autoRestartTaskEnabled) {
-          logger.info("Attempting to restart task {}", taskId);
-          herder.restartTask(taskId, this::onTaskRestart);
-        }
+    taskJmxReporter.updateMetrics(taskId, taskStatus);
+    if (taskStatus.state().equalsIgnoreCase(TaskStatus.State.FAILED.toString())) {
+      connectorJmxReport.incrementTotalFailedCount(taskId.connector());
+      if (autoRestartTaskEnabled) {
+        logger.info("Attempting to restart task {}", taskId);
+        herder.restartTask(taskId, this::onTaskRestart);
       }
     }
   }
