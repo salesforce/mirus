@@ -10,6 +10,7 @@ package com.salesforce.mirus;
 
 import com.google.common.collect.ImmutableMap;
 import com.salesforce.mirus.config.TaskConfig;
+import com.salesforce.mirus.metrics.QueryJmxBean;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -60,6 +61,8 @@ public class MirusSourceTask extends SourceTask {
   private AtomicBoolean shutDown = new AtomicBoolean(false);
   private boolean enablePartitionMatching = false;
   private boolean enableBufferFlushing = false;
+
+  private QueryJmxBean query = new QueryJmxBean();
 
   @SuppressWarnings("unused")
   public MirusSourceTask() {
@@ -153,6 +156,10 @@ public class MirusSourceTask extends SourceTask {
   public List<SourceRecord> poll() {
 
     try {
+      if (this.enableBufferFlushing) {
+        // if (true) {
+        query.getAllBeans();
+      }
       logger.trace("Calling poll");
       ConsumerRecords<byte[], byte[]> result = consumer.poll(consumerPollTimeoutMillis);
       logger.trace("Got {} records", result.count());
@@ -164,6 +171,8 @@ public class MirusSourceTask extends SourceTask {
     } catch (WakeupException e) {
       // Ignore exception iff shutting down thread.
       if (!shutDown.get()) throw e;
+    } catch (Exception re) {
+      logger.error(re.getMessage());
     }
 
     // We are shutting down!
