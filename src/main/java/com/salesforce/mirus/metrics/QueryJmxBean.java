@@ -1,6 +1,7 @@
 package com.salesforce.mirus.metrics;
 
 import java.lang.management.ManagementFactory;
+import java.util.HashSet;
 import java.util.Set;
 import javax.management.*;
 import org.slf4j.Logger;
@@ -11,35 +12,31 @@ public class QueryJmxBean {
   private static final Logger logger = LoggerFactory.getLogger(QueryJmxBean.class);
 
   MBeanServer server = ManagementFactory.getPlatformMBeanServer();
-  Set<ObjectInstance> instances = server.queryMBeans(null, null);
-  Set<ObjectName> names;
 
-  public Double[] getBufferAvailableBytes()
-      throws IntrospectionException, InstanceNotFoundException, ReflectionException {
-
+  public boolean bufferAvailable() throws InstanceNotFoundException, ReflectionException {
+    Set<ObjectName> producerMetrics = new HashSet<>();
     try {
-      names =
+      logger.trace("Querying producer metrics for each client-id.");
+      producerMetrics =
           server.queryNames(
               new ObjectName("kafka.producer:type=producer-metrics,client-id=*"), null);
     } catch (MalformedObjectNameException e) {
-      e.printStackTrace();
+      logger.error(e.getMessage());
     }
-    Double bufferbytes[] = new Double[names.size()];
-    int counter = 0;
-    for (ObjectName name : names) {
-      MBeanInfo minfo = server.getMBeanInfo(name);
-      MBeanAttributeInfo ainfo[] = minfo.getAttributes();
-      Object bufferinfo = null;
+    logger.trace("Got {} producers", producerMetrics.size());
+    for (ObjectName producer : producerMetrics) {
+      Double bufferAvailableBytes = 0.0;
       try {
-        bufferinfo = server.getAttribute(name, "buffer-available-bytes");
+        // Buffer available bytes is of type Double
+        bufferAvailableBytes = (Double) server.getAttribute(producer, "buffer-available-bytes");
       } catch (MBeanException e) {
-        e.printStackTrace();
+        logger.error(e.getMessage());
       } catch (AttributeNotFoundException e) {
-        e.printStackTrace();
+        logger.error(e.getMessage());
       }
-      bufferbytes[counter] = (Double) bufferinfo;
-      counter++;
+      // If any producer's buffer is 0, it counts as buffer unavailable.
+      if (bufferAvailableBytes.equals(0.0)) return false;
     }
-    return bufferbytes;
+    return true;
   }
 }
