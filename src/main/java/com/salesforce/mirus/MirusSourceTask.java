@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
+import javax.management.InstanceNotFoundException;
+import javax.management.ReflectionException;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -156,11 +158,9 @@ public class MirusSourceTask extends SourceTask {
   public List<SourceRecord> poll() {
 
     try {
-      if (this.enableBufferFlushing) {
-        if (!query.bufferAvailable()) {
-          logger.info("No buffer available, not polling.");
-          return Collections.emptyList();
-        }
+      if (this.enableBufferFlushing && !query.bufferAvailable()) {
+        logger.debug("No buffer available, not polling.");
+        return Collections.emptyList();
       }
       logger.trace("Calling poll");
       ConsumerRecords<byte[], byte[]> result = consumer.poll(consumerPollTimeoutMillis);
@@ -173,8 +173,8 @@ public class MirusSourceTask extends SourceTask {
     } catch (WakeupException e) {
       // Ignore exception iff shutting down thread.
       if (!shutDown.get()) throw e;
-    } catch (Exception re) {
-      logger.error(re.getMessage());
+    } catch (InstanceNotFoundException | ReflectionException e) {
+      logger.error(e.getMessage());
     }
 
     // We are shutting down!

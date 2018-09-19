@@ -29,13 +29,13 @@ public class QueryJmxBean {
       try {
         // Buffer available bytes is of type Double
         bufferAvailableBytes = (Double) server.getAttribute(producer, "buffer-available-bytes");
-      } catch (MBeanException e) {
-        logger.error(e.getMessage());
-      } catch (AttributeNotFoundException e) {
+      } catch (MBeanException | AttributeNotFoundException e) {
         logger.error(e.getMessage());
       }
-      // If any producer's buffer is 0, it counts as buffer unavailable.
-      if (bufferAvailableBytes.equals(0.0)) return false;
+      // If any producer's buffer available is 0, it counts as buffer unavailable.
+      if (bufferAvailableBytes.equals(0.0)) {
+        return false;
+      }
     }
     return true;
   }
