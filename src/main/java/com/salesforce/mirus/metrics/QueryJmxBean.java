@@ -12,38 +12,34 @@ public class QueryJmxBean {
 
   MBeanServer server = ManagementFactory.getPlatformMBeanServer();
   Set<ObjectInstance> instances = server.queryMBeans(null, null);
-  Set<ObjectName> names = server.queryNames(null, null);
+  Set<ObjectName> names;
 
-  public void getAllBeans()
+  public Double[] getBufferAvailableBytes()
       throws IntrospectionException, InstanceNotFoundException, ReflectionException {
-    ObjectName producerMetrics = null;
+
     try {
-      producerMetrics = new ObjectName("kafka.producer:type=producer-metrics");
+      names =
+          server.queryNames(
+              new ObjectName("kafka.producer:type=producer-metrics,client-id=*"), null);
     } catch (MalformedObjectNameException e) {
       e.printStackTrace();
     }
-
-    MBeanInfo minfo = server.getMBeanInfo(producerMetrics);
-    MBeanAttributeInfo ainfo[] = minfo.getAttributes();
-
-    if (ainfo.length > 3) {
-      logger.info("Wonderful");
-    }
-
+    Double bufferbytes[] = new Double[names.size()];
+    int counter = 0;
     for (ObjectName name : names) {
-      MBeanInfo info = this.server.getMBeanInfo(name);
-      logger.error("MBean Found:");
-      logger.error("Class Name:t" + info.getClassName());
-      logger.error("****************************************");
+      MBeanInfo minfo = server.getMBeanInfo(name);
+      MBeanAttributeInfo ainfo[] = minfo.getAttributes();
+      Object bufferinfo = null;
+      try {
+        bufferinfo = server.getAttribute(name, "buffer-available-bytes");
+      } catch (MBeanException e) {
+        e.printStackTrace();
+      } catch (AttributeNotFoundException e) {
+        e.printStackTrace();
+      }
+      bufferbytes[counter] = (Double) bufferinfo;
+      counter++;
     }
-
-    for (ObjectInstance instance : instances) {
-      logger.error("Object Name:t" + instance.getObjectName());
-      logger.error("****************************************");
-    }
-  }
-
-  public void getBufferAvailableBytes() {
-    return;
+    return bufferbytes;
   }
 }

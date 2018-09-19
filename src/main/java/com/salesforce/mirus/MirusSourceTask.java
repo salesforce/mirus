@@ -157,8 +157,7 @@ public class MirusSourceTask extends SourceTask {
 
     try {
       if (this.enableBufferFlushing) {
-        // if (true) {
-        query.getAllBeans();
+        query.getBufferAvailableBytes();
       }
       logger.trace("Calling poll");
       ConsumerRecords<byte[], byte[]> result = consumer.poll(consumerPollTimeoutMillis);
