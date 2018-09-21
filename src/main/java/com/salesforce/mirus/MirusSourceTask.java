@@ -10,12 +10,8 @@ package com.salesforce.mirus;
 
 import com.google.common.collect.ImmutableMap;
 import com.salesforce.mirus.config.TaskConfig;
-import com.salesforce.mirus.metrics.QueryJmxBean;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import com.salesforce.mirus.metrics.BufferMetrics;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import javax.management.InstanceNotFoundException;
@@ -53,9 +49,16 @@ public class MirusSourceTask extends SourceTask {
 
   private static final String KEY_OFFSET = "offset";
 
+  private static final double BUFFER_EMPTY_THRESHOLD = 0.9;
+
+  private static final int BUFFER_SLEEP_MS = 5000;
+
+  private static final Double ZERO = 0.0;
+
   private final ConsumerFactory consumerFactory;
 
   private Map<String, Object> consumerProperties;
+  private String producerName = "";
   private long consumerPollTimeoutMillis;
   private String destinationTopicNamePrefix;
   private String destinationTopicNameSuffix;
@@ -64,7 +67,7 @@ public class MirusSourceTask extends SourceTask {
   private boolean enablePartitionMatching = false;
   private boolean enableBufferFlushing = false;
 
-  private QueryJmxBean query = new QueryJmxBean();
+  private BufferMetrics query = new BufferMetrics();
 
   @SuppressWarnings("unused")
   public MirusSourceTask() {
@@ -154,14 +157,37 @@ public class MirusSourceTask extends SourceTask {
         });
   }
 
+  private String getConsumerIdNumber() {
+    // Consumer client id must be set, and each one is uniquely identified with a number
+    // e.g. mirus-quickstart-source-0
+    String[] parseConsumerClientId = ((String) consumerProperties.get("client.id")).split("-");
+    return parseConsumerClientId[parseConsumerClientId.length - 1];
+  }
+
   @Override
   public List<SourceRecord> poll() {
 
     try {
-      if (this.enableBufferFlushing && !query.bufferAvailable()) {
-        logger.debug("No buffer available, not polling.");
-        return Collections.emptyList();
+      if (enableBufferFlushing) {
+        if (producerName.isEmpty()) {
+          producerName = query.getProducerName(getConsumerIdNumber());
+        }
+        Double availableBytes = query.getBufferAvailableBytes(producerName);
+        Double totalBytes = query.getBufferTotalBytes(producerName);
+        if (availableBytes.equals(ZERO)) {
+          while (availableBytes / totalBytes < BUFFER_EMPTY_THRESHOLD) {
+            logger.info("Buffer is too full, sleep until empty.");
+            logger.info(
+                String.format(
+                    "Producer: %s, Available %e, total %e",
+                    producerName, availableBytes, totalBytes));
+            Thread.sleep(BUFFER_SLEEP_MS);
+            availableBytes = query.getBufferAvailableBytes(producerName);
+            totalBytes = query.getBufferTotalBytes(producerName);
+          }
+        }
       }
+
       logger.trace("Calling poll");
       ConsumerRecords<byte[], byte[]> result = consumer.poll(consumerPollTimeoutMillis);
       logger.trace("Got {} records", result.count());
@@ -175,6 +201,8 @@ public class MirusSourceTask extends SourceTask {
       if (!shutDown.get()) throw e;
     } catch (InstanceNotFoundException | ReflectionException e) {
       logger.error(e.getMessage());
+    } catch (InterruptedException e) {
+      // Ignore and continue
     }
 
     // We are shutting down!
