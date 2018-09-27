@@ -111,9 +111,8 @@ public class MirusSourceTask extends SourceTask {
     }
   }
 
-  protected void closeConsumer() {
-    // We are shutting down!
-    logger.debug("Closing consumer");
+  protected void shutDownTask() {
+    logger.debug("Task shutting down");
     consumer.close();
   }
 
@@ -171,7 +170,7 @@ public class MirusSourceTask extends SourceTask {
       if (!shutDown.get()) throw e;
     }
 
-    closeConsumer();
+    shutDownTask();
     return Collections.emptyList();
   }
 
