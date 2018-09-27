@@ -57,8 +57,9 @@ public class MirusSourceTask extends SourceTask {
   private String destinationTopicNamePrefix;
   private String destinationTopicNameSuffix;
   private Consumer<byte[], byte[]> consumer;
-  private AtomicBoolean shutDown = new AtomicBoolean(false);
   private boolean enablePartitionMatching = false;
+
+  protected AtomicBoolean shutDown = new AtomicBoolean(false);
 
   @SuppressWarnings("unused")
   public MirusSourceTask() {
@@ -108,6 +109,12 @@ public class MirusSourceTask extends SourceTask {
       shutDown.set(true);
       consumer.wakeup();
     }
+  }
+
+  protected void closeConsumer() {
+    // We are shutting down!
+    logger.debug("Closing consumer");
+    consumer.close();
   }
 
   private void seekToOffsets(List<TopicPartition> partitionIds) {
@@ -164,9 +171,7 @@ public class MirusSourceTask extends SourceTask {
       if (!shutDown.get()) throw e;
     }
 
-    // We are shutting down!
-    logger.debug("Closing consumer");
-    consumer.close();
+    closeConsumer();
     return Collections.emptyList();
   }
 
