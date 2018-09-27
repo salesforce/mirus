@@ -69,4 +69,8 @@ public class TaskConfig {
   public boolean getEnablePartitionMatching() {
     return simpleConfig.getBoolean(SourceConfigDefinition.ENABLE_PARTITION_MATCHING.key);
   }
+
+  public boolean getEnableBufferFlushing() {
+    return simpleConfig.getBoolean(SourceConfigDefinition.ENABLE_BUFFER_FLUSHING.key);
+  }
 }

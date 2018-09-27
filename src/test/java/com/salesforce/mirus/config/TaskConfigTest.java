@@ -38,6 +38,7 @@ public class TaskConfigTest {
     properties.put("destination.topic.name.prefix", "prefix");
     properties.put("destination.topic.name.suffix", "suffix");
     properties.put("enable.partition.matching", "true");
+    properties.put("enable.buffer.flushing", "true");
     this.taskConfig = new TaskConfig(properties);
   }
 
@@ -46,6 +47,7 @@ public class TaskConfigTest {
     TaskConfig taskConfig = new TaskConfig(Collections.emptyMap());
     assertThat(taskConfig.getInternalTaskPartitions(), is(""));
     assertThat(taskConfig.getEnablePartitionMatching(), is(false));
+    assertThat(taskConfig.getEnableBufferFlushing(), is(false));
   }
 
   @Test
@@ -57,6 +59,7 @@ public class TaskConfigTest {
     assertThat(this.taskConfig.getDestinationTopicNamePrefix(), is("prefix"));
     assertThat(this.taskConfig.getDestinationTopicNameSuffix(), is("suffix"));
     assertThat(this.taskConfig.getEnablePartitionMatching(), is(true));
+    assertThat(this.taskConfig.getEnableBufferFlushing(), is(true));
   }
 
   @Test
@@ -68,6 +71,7 @@ public class TaskConfigTest {
             "destination.topic.name.suffix",
             "poll.timeout.ms",
             "consumer.bootstrap.servers",
-            "enable.partition.matching"));
+            "enable.partition.matching",
+            "enable.buffer.flushing"));
   }
 }
