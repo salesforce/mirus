@@ -13,7 +13,12 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.storage.Converter;
 
-/** This converter passes binary byte array data through unmodified. */
+/**
+ * This converter passes binary byte array data through unmodified.
+ *
+ * @deprecated Please use {@link org.apache.kafka.connect.converters.ByteArrayConverter}
+ */
+@Deprecated
 public class ByteArrayConverter implements Converter {
 
   @Override
