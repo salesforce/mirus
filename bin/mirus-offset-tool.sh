@@ -15,5 +15,11 @@ readonly base_dir=$(cd $(dirname "$0")/.. && pwd -P)
 
 MIRUS_OFFSET_TOOL_MAIN_CLASS=${MIRUS_OFFSET_TOOL_MAIN_CLASS:-com.salesforce.mirus.offsets.MirusOffsetTool}
 
+# Which java to use
+if [ -z "${JAVA_HOME}" ]; then
+  JAVA="java"
+else
+  JAVA="${JAVA_HOME}/bin/java"
+fi
 
-${JAVA_HOME}/bin/java ${MIRUS_OPTS} -cp "${base_dir}/mirus.jar" "${MIRUS_OFFSET_TOOL_MAIN_CLASS}" "$@"
+${JAVA} ${MIRUS_OPTS} -cp "${base_dir}/mirus.jar" "${MIRUS_OFFSET_TOOL_MAIN_CLASS}" "$@"
