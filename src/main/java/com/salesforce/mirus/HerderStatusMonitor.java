@@ -15,7 +15,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.runtime.AbstractStatus.State;
+import org.apache.kafka.connect.runtime.ConnectorStatus;
 import org.apache.kafka.connect.runtime.Herder;
 import org.apache.kafka.connect.runtime.TaskStatus;
 import org.apache.kafka.connect.runtime.rest.entities.ConnectorStateInfo;
@@ -91,7 +91,8 @@ public class HerderStatusMonitor implements Runnable {
   private void processConnector(String connectorName) {
     ConnectorStateInfo stateInfo = herder.connectorStatus(connectorName);
     boolean isAssignedWorker = workerId.equals(stateInfo.connector().workerId());
-    State connectorState = State.valueOf(stateInfo.connector().state());
+    ConnectorStatus.State connectorState =
+        ConnectorStatus.State.valueOf(stateInfo.connector().state());
 
     herder.connectorInfo(
         connectorName,
@@ -106,14 +107,16 @@ public class HerderStatusMonitor implements Runnable {
             connectorJmxReport.handleConnector(herder, connectorInfo);
           }
 
-          if (connectorState == State.RUNNING) {
-            // All workers need to process the all assigned tasks for the current connector
+          if (connectorState == ConnectorStatus.State.RUNNING) {
+            // All workers need to process all assigned tasks for the current connector
             connectorInfo.tasks().forEach(task -> processTask(task, herder.taskStatus(task)));
           }
         });
 
     // Only the assigned worker should attempt to restart a failed connector
-    if (autoRestartConnectorEnabled && isAssignedWorker && connectorState == State.FAILED) {
+    if (autoRestartConnectorEnabled
+        && isAssignedWorker
+        && connectorState == ConnectorStatus.State.FAILED) {
       logger.info("Attempting to restart connector {}", connectorName);
       connectorJmxReport.incrementConnectorRestartAttempts(connectorName);
       herder.restartConnector(
@@ -130,7 +133,8 @@ public class HerderStatusMonitor implements Runnable {
 
     if (workerId.equals(taskStatus.workerId())) {
       taskJmxReporter.updateMetrics(taskId, taskStatus);
-      if (taskStatus.state().equalsIgnoreCase(TaskStatus.State.FAILED.toString())) {
+      TaskStatus.State taskState = TaskStatus.State.valueOf(taskStatus.state());
+      if (taskState == TaskStatus.State.FAILED) {
         connectorJmxReport.incrementTotalFailedCount(taskId.connector());
         if (autoRestartTaskEnabled) {
           logger.info("Attempting to restart task {}", taskId);
