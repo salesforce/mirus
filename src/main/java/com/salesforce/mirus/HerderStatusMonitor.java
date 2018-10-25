@@ -104,24 +104,26 @@ public class HerderStatusMonitor implements Runnable {
               });
         }
       }
-    }
+    } else {
 
-    herder.connectorInfo(
-        connectorName,
-        (error, connectorInfo) -> {
-          if (error != null) {
-            logger.warn("Failed to retrieve connector info, Error details: {}", error);
-            return;
-          }
-          // Only the worker with the active controller should report connector metrics
-          if (workerId.equals(stateInfo.connector().workerId())) {
-            connectorJmxReport.handleConnector(herder, connectorInfo);
-          }
-          connectorInfo.tasks().forEach(task -> processTask(task, herder.taskStatus(task)));
-        });
+      herder.connectorInfo(
+          connectorName,
+          (error, connectorInfo) -> {
+            if (error != null) {
+              logger.warn("Failed to retrieve connector info, Error details: {}", error);
+              return;
+            }
+            // Only the worker with the active controller should report connector metrics
+            if (workerId.equals(stateInfo.connector().workerId())) {
+              connectorJmxReport.handleConnector(herder, connectorInfo);
+            }
+            connectorInfo.tasks().forEach(task -> processTask(task, herder.taskStatus(task)));
+          });
+    }
   }
 
   private void processTask(ConnectorTaskId taskId, TaskState taskStatus) {
+
     if (workerId.equals(taskStatus.workerId())) {
       taskJmxReporter.updateMetrics(taskId, taskStatus);
       if (taskStatus.state().equalsIgnoreCase(TaskStatus.State.FAILED.toString())) {
