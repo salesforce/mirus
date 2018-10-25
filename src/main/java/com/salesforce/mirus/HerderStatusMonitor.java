@@ -90,11 +90,12 @@ public class HerderStatusMonitor implements Runnable {
 
   private void processConnector(String connectorName) {
     ConnectorStateInfo stateInfo = herder.connectorStatus(connectorName);
-    if (workerId.equals(stateInfo.connector().workerId())) {
-      if (stateInfo.connector().state().equals(ConnectorStatus.State.FAILED.toString())) {
-        connectorJmxReport.incrementConnectorRestartAttempts(connectorName);
-        if (autoRestartConnectorEnabled) {
+
+    if (autoRestartConnectorEnabled) {
+      if (workerId.equals(stateInfo.connector().workerId())) {
+        if (stateInfo.connector().state().equals(ConnectorStatus.State.FAILED.toString())) {
           logger.info("Attempting to restart connector {}", connectorName);
+          connectorJmxReport.incrementConnectorRestartAttempts(connectorName);
           herder.restartConnector(
               connectorName,
               (error, _void) -> {
@@ -102,24 +103,25 @@ public class HerderStatusMonitor implements Runnable {
                   logger.warn("Failed to restart connector {}", connectorName, error);
                 }
               });
+          return;
         }
       }
-    } else {
-
-      herder.connectorInfo(
-          connectorName,
-          (error, connectorInfo) -> {
-            if (error != null) {
-              logger.warn("Failed to retrieve connector info, Error details: {}", error);
-              return;
-            }
-            // Only the worker with the active controller should report connector metrics
-            if (workerId.equals(stateInfo.connector().workerId())) {
-              connectorJmxReport.handleConnector(herder, connectorInfo);
-            }
-            connectorInfo.tasks().forEach(task -> processTask(task, herder.taskStatus(task)));
-          });
     }
+
+    herder.connectorInfo(
+        connectorName,
+        (error, connectorInfo) -> {
+          if (error != null) {
+            logger.warn("Failed to retrieve connector info, Error details: {}", error);
+            return;
+          }
+          // Only the worker with the active controller should report connector metrics
+          if (workerId.equals(stateInfo.connector().workerId())) {
+            connectorJmxReport.handleConnector(herder, connectorInfo);
+          }
+          connectorInfo.tasks().forEach(task -> processTask(task, herder.taskStatus(task)));
+        });
+
   }
 
   private void processTask(ConnectorTaskId taskId, TaskState taskStatus) {
