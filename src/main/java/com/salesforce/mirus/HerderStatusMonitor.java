@@ -15,7 +15,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.runtime.ConnectorStatus;
+import org.apache.kafka.connect.runtime.AbstractStatus.State;
 import org.apache.kafka.connect.runtime.Herder;
 import org.apache.kafka.connect.runtime.TaskStatus;
 import org.apache.kafka.connect.runtime.rest.entities.ConnectorStateInfo;
@@ -90,23 +90,8 @@ public class HerderStatusMonitor implements Runnable {
 
   private void processConnector(String connectorName) {
     ConnectorStateInfo stateInfo = herder.connectorStatus(connectorName);
-
-    if (autoRestartConnectorEnabled) {
-      if (workerId.equals(stateInfo.connector().workerId())) {
-        if (stateInfo.connector().state().equals(ConnectorStatus.State.FAILED.toString())) {
-          logger.info("Attempting to restart connector {}", connectorName);
-          connectorJmxReport.incrementConnectorRestartAttempts(connectorName);
-          herder.restartConnector(
-              connectorName,
-              (error, _void) -> {
-                if (error != null) {
-                  logger.warn("Failed to restart connector {}", connectorName, error);
-                }
-              });
-          return;
-        }
-      }
-    }
+    boolean isAssignedWorker = workerId.equals(stateInfo.connector().workerId());
+    State connectorState = State.valueOf(stateInfo.connector().state());
 
     herder.connectorInfo(
         connectorName,
@@ -115,13 +100,30 @@ public class HerderStatusMonitor implements Runnable {
             logger.warn("Failed to retrieve connector info, Error details: {}", error);
             return;
           }
-          // Only the worker with the active controller should report connector metrics
-          if (workerId.equals(stateInfo.connector().workerId())) {
+          // Only the worker assigned to this controller should report connector metrics
+          // Report metrics regardless of current state
+          if (isAssignedWorker) {
             connectorJmxReport.handleConnector(herder, connectorInfo);
           }
-          connectorInfo.tasks().forEach(task -> processTask(task, herder.taskStatus(task)));
+
+          if (connectorState == State.RUNNING) {
+            // All workers need to process the all assigned tasks for the current connector
+            connectorInfo.tasks().forEach(task -> processTask(task, herder.taskStatus(task)));
+          }
         });
 
+    // Only the assigned worker should attempt to restart a failed connector
+    if (autoRestartConnectorEnabled && isAssignedWorker && connectorState == State.FAILED) {
+      logger.info("Attempting to restart connector {}", connectorName);
+      connectorJmxReport.incrementConnectorRestartAttempts(connectorName);
+      herder.restartConnector(
+          connectorName,
+          (error, _void) -> {
+            if (error != null) {
+              logger.warn("Failed to restart connector {}", connectorName, error);
+            }
+          });
+    }
   }
 
   private void processTask(ConnectorTaskId taskId, TaskState taskStatus) {
