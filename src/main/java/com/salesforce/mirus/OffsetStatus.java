@@ -75,7 +75,7 @@ public class OffsetStatus {
           .forEach(
               k ->
                   System.out.printf(
-                      "%s\t%d\t%d\t%d\n",
+                      "%s\t%d\t%d\t%d" + System.lineSeparator(),
                       k.topic(), k.partition(), beginningOffsets.get(k), endOffsets.get(k)));
     }
   }
