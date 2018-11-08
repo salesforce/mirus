@@ -4,7 +4,7 @@
 
     <groupId>com.salesforce.mirus</groupId>
     <artifactId>mirus</artifactId>
-    <version>0.0.13-SNAPSHOT</version>
+    <version>0.0.14-SNAPSHOT</version>
 
     <name>Mirus</name>
     <description>Apache Kafka data replication tool based on Kafka Connect</description>

@@ -8,7 +8,6 @@
 
 package com.salesforce.mirus;
 
-import com.google.common.collect.ImmutableMap;
 import com.salesforce.mirus.config.TaskConfig;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -70,10 +69,11 @@ public class MirusSourceTask extends SourceTask {
     this.consumerFactory = consumerFactory;
   }
 
-  public static Map<String, Long> offsetMap(long offset) {
-    return ImmutableMap.of(KEY_OFFSET, offset);
+  public static Map<String, Long> offsetMap(Long offset) {
+    return Collections.singletonMap(KEY_OFFSET, offset);
   }
 
+  @Override
   public String version() {
     return new MirusSourceConnector().version();
   }
@@ -148,8 +148,11 @@ public class MirusSourceTask extends SourceTask {
             }
             return;
           }
-          long lastRecordedOffset = (long) offsetMap.get(KEY_OFFSET);
-          consumer.seek(tp, lastRecordedOffset);
+          Long lastRecordedOffset = (Long) offsetMap.get(KEY_OFFSET);
+          // check if offset has been set to null, i.e. tombstone record
+          if (lastRecordedOffset != null) {
+            consumer.seek(tp, lastRecordedOffset);
+          }
         });
   }
 

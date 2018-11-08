@@ -47,11 +47,14 @@ public class OffsetSerDeTest {
     csvList =
         Arrays.asList(
             "connector-id,topic,1,123" + System.lineSeparator(),
-            "prd-logbus-source,sfdc.test.logbus__prd.ajna_test__logs.coreapp.sp1.logbus,2,345" + System.lineSeparator());
+            "prd-logbus-source,sfdc.test.logbus__prd.ajna_test__logs.coreapp.sp1.logbus,2,345"
+                + System.lineSeparator());
     jsonList =
         Arrays.asList(
-            "{\"connectorId\":\"connector-id\",\"topic\":\"topic\",\"partition\":1,\"offset\":123}" + System.lineSeparator(),
-            "{\"connectorId\":\"prd-logbus-source\",\"topic\":\"sfdc.test.logbus__prd.ajna_test__logs.coreapp.sp1.logbus\",\"partition\":2,\"offset\":345}" + System.lineSeparator());
+            "{\"connectorId\":\"connector-id\",\"topic\":\"topic\",\"partition\":1,\"offset\":123}"
+                + System.lineSeparator(),
+            "{\"connectorId\":\"prd-logbus-source\",\"topic\":\"sfdc.test.logbus__prd.ajna_test__logs.coreapp.sp1.logbus\",\"partition\":2,\"offset\":345}"
+                + System.lineSeparator());
   }
 
   @Test

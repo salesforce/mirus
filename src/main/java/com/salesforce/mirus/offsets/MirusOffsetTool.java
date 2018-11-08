@@ -16,6 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.apache.kafka.common.utils.Utils;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.runtime.distributed.DistributedConfig;
@@ -63,6 +64,9 @@ public class MirusOffsetTool {
     if (args.resetOffsets && (args.fromFile == null || args.fromFile.isEmpty())) {
       throw new ParameterException("--reset-offsets requires --from-file to be set");
     }
+    if (args.writeNullOffsets && !args.describe) {
+      throw new ParameterException("--show-nulls requires --describe to be set");
+    }
 
     MirusOffsetTool mirusOffsetTool = newOffsetTool(args);
     mirusOffsetTool.run();
@@ -97,7 +101,14 @@ public class MirusOffsetTool {
     if (args.describe) {
       offsetFetcher.start();
       try {
-        offsetSerDe.write(offsetFetcher.readOffsets(), System.out);
+        Stream<OffsetInfo> offsetInfos =
+            offsetFetcher
+                .readOffsets()
+                .filter(
+                    offsetInfo ->
+                        offsetInfo.offset != null
+                            || (offsetInfo.offset == null && args.writeNullOffsets));
+        offsetSerDe.write(offsetInfos, System.out);
       } finally {
         offsetFetcher.stop();
       }
@@ -121,6 +132,11 @@ public class MirusOffsetTool {
         names = {"--describe"},
         description = "Display all offsets stored in the offset storage topic")
     boolean describe;
+
+    @Parameter(
+        names = {"--show-nulls"},
+        description = "Include records with null offsets (tombstone records). Requires --describe ")
+    boolean writeNullOffsets = false;
 
     @Parameter(
         names = {"--reset-offsets"},
