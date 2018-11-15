@@ -37,21 +37,29 @@ public class OffsetSerDeTest {
 
     List<OffsetInfo> offsetInfoList = new ArrayList<>();
     offsetInfoList.add(new OffsetInfo("connector-id", "topic", 1L, 123L));
+    offsetInfoList.add(new OffsetInfo("connector-id", "topic", 2L, null));
     offsetInfoList.add(
         new OffsetInfo(
             "prd-logbus-source",
             "sfdc.test.logbus__prd.ajna_test__logs.coreapp.sp1.logbus",
             2L,
             345L));
+
     offsetInfoStream = offsetInfoList.stream();
     csvList =
         Arrays.asList(
             "connector-id,topic,1,123" + System.lineSeparator(),
-            "prd-logbus-source,sfdc.test.logbus__prd.ajna_test__logs.coreapp.sp1.logbus,2,345" + System.lineSeparator());
+            "connector-id,topic,2," + System.lineSeparator(),
+            "prd-logbus-source,sfdc.test.logbus__prd.ajna_test__logs.coreapp.sp1.logbus,2,345"
+                + System.lineSeparator());
     jsonList =
         Arrays.asList(
-            "{\"connectorId\":\"connector-id\",\"topic\":\"topic\",\"partition\":1,\"offset\":123}" + System.lineSeparator(),
-            "{\"connectorId\":\"prd-logbus-source\",\"topic\":\"sfdc.test.logbus__prd.ajna_test__logs.coreapp.sp1.logbus\",\"partition\":2,\"offset\":345}" + System.lineSeparator());
+            "{\"connectorId\":\"connector-id\",\"topic\":\"topic\",\"partition\":1,\"offset\":123}"
+                + System.lineSeparator(),
+            "{\"connectorId\":\"connector-id\",\"topic\":\"topic\",\"partition\":2,\"offset\":null}"
+                + System.lineSeparator(),
+            "{\"connectorId\":\"prd-logbus-source\",\"topic\":\"sfdc.test.logbus__prd.ajna_test__logs.coreapp.sp1.logbus\",\"partition\":2,\"offset\":345}"
+                + System.lineSeparator());
   }
 
   @Test
