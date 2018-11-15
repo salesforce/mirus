@@ -8,8 +8,7 @@
 
 package com.salesforce.mirus;
 
-import static org.hamcrest.CoreMatchers.hasItems;
-import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
 
@@ -65,7 +64,7 @@ public class MirusSourceTaskTest {
             return new OffsetStorageReader() {
               @Override
               public <T> Map<String, Object> offset(Map<String, T> partition) {
-                return new HashMap<>(MirusSourceTask.offsetMap(0));
+                return new HashMap<>(MirusSourceTask.offsetMap(0L));
               }
 
               @Override

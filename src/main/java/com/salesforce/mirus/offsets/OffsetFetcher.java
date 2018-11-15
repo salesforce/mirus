@@ -110,16 +110,24 @@ class OffsetFetcher {
   private OffsetInfo toOffsetInfo(Map.Entry<ByteBuffer, ByteBuffer> offsetEntry) {
     Object kafkaConnectOffsetKey =
         internalConverter.toConnectData(null, offsetEntry.getKey().array()).value();
-    Object kafkaConnectOffsetValue =
-        internalConverter.toConnectData(null, offsetEntry.getValue().array()).value();
     // Deserialize the internal Mirus offset format
     List<Object> keyList = (List) kafkaConnectOffsetKey;
     Map<String, Object> parts = (Map) keyList.get(1);
-    Map<String, Object> valueMap = (Map) kafkaConnectOffsetValue;
+
+    ByteBuffer val = offsetEntry.getValue();
+    Long offset = null;
+
+    // Handle null-valued records, i.e. tombstone messages
+    if (val != null) {
+      Object kafkaConnectOffsetValue = internalConverter.toConnectData(null, val.array()).value();
+      Map<String, Object> valueMap = (Map) kafkaConnectOffsetValue;
+      offset = (Long) valueMap.get("offset");
+    }
+
     return new OffsetInfo(
         (String) keyList.get(0),
         (String) parts.get("topic"),
         ((Long) parts.get("partition")),
-        (Long) valueMap.get("offset"));
+        offset);
   }
 }
