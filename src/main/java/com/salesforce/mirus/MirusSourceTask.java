@@ -8,6 +8,7 @@
 
 package com.salesforce.mirus;
 
+import com.salesforce.mirus.config.TaskConfig;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -15,7 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
-
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -29,8 +29,6 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.salesforce.mirus.config.TaskConfig;
 
 interface ConsumerFactory {
   Consumer<byte[], byte[]> newConsumer(Map<String, Object> consumerProperties);

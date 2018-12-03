@@ -138,7 +138,9 @@ public class Mirus {
 
     ConfigBackingStore configBackingStore =
         new KafkaConfigBackingStore(
-            worker.getInternalValueConverter(), configWithClientIdSuffix(workerProps, "config"));
+            worker.getInternalValueConverter(),
+            configWithClientIdSuffix(workerProps, "config"),
+            worker.configTransformer());
 
     DistributedConfig distributedConfig = configWithClientIdSuffix(workerProps, "herder");
     String kafkaClusterId = ConnectUtils.lookupKafkaClusterId(distributedConfig);

@@ -60,6 +60,11 @@ public class MirusSourceTaskTest {
     SourceTaskContext context =
         new SourceTaskContext() {
           @Override
+          public Map<String, String> configs() {
+            return null;
+          }
+
+          @Override
           public OffsetStorageReader offsetStorageReader() {
             return new OffsetStorageReader() {
               @Override
