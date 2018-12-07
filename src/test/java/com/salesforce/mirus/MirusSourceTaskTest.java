@@ -183,4 +183,36 @@ public class MirusSourceTaskTest {
     assertThat(result.get(0).timestamp(), is(timestamp));
     assertThat(result.get(0).headers().size(), is(0));
   }
+
+  @Test
+  public void testJsonConverterRecord() {
+    Map<String, String> properties = mockTaskProperties();
+    properties.put(
+        SourceConfigDefinition.SOURCE_KEY_CONVERTER.getKey(),
+        "org.apache.kafka.connect.json.JsonConverter");
+    properties.put(
+        SourceConfigDefinition.SOURCE_VALUE_CONVERTER.getKey(),
+        "org.apache.kafka.connect.json.JsonConverter");
+
+    mirusSourceTask.start(properties);
+    mockConsumer.addRecord(
+        new ConsumerRecord<>(
+            TOPIC,
+            0,
+            0,
+            "{\"schema\": {\"type\": \"struct\",\"fields\": [{\"type\": \"string\",\"optional\": true,\"field\": \"id\"}],\"optional\": false},\"payload\": {\"id\": \"hiThereMirusKey\"}}"
+                .getBytes(StandardCharsets.UTF_8),
+            "{\"schema\": {\"type\": \"struct\",\"fields\": [{\"type\": \"string\",\"optional\": true,\"field\": \"id\"}],\"optional\": false},\"payload\": {\"id\": \"hiThereMirusValue\"}}"
+                .getBytes(StandardCharsets.UTF_8)));
+
+    List<SourceRecord> result = mirusSourceTask.poll();
+    assertThat(result.size(), is(1));
+
+    SourceRecord sourceRecord = result.get(0);
+    assertThat(sourceRecord.headers().size(), is(0));
+    assertThat(sourceRecord.kafkaPartition(), is(nullValue())); // Since partition matching is off
+    assertThat(sourceRecord.keySchema().type(), is(Schema.Type.STRUCT));
+    assertThat(sourceRecord.valueSchema().type(), is(Schema.Type.STRUCT));
+    assertThat(sourceRecord.timestamp(), is(-1L)); // Since the source record has no timestamp
+  }
 }
