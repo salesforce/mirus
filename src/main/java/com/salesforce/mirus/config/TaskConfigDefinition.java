@@ -22,7 +22,9 @@ public class TaskConfigDefinition {
           SourceConfigDefinition.POLL_TIMEOUT_MS,
           SourceConfigDefinition.DESTINATION_TOPIC_NAME_PREFIX,
           SourceConfigDefinition.DESTINATION_TOPIC_NAME_SUFFIX,
-          SourceConfigDefinition.ENABLE_PARTITION_MATCHING);
+          SourceConfigDefinition.ENABLE_PARTITION_MATCHING,
+          SourceConfigDefinition.SOURCE_KEY_CONVERTER,
+          SourceConfigDefinition.SOURCE_VALUE_CONVERTER);
 
   static ConfigDef configDef() {
     ConfigDef configDef = new ConfigDef();

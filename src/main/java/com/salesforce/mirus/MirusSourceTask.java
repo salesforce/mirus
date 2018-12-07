@@ -23,10 +23,11 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.header.Headers;
-import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
+import org.apache.kafka.connect.storage.Converter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,6 +58,9 @@ public class MirusSourceTask extends SourceTask {
   private String destinationTopicNameSuffix;
   private Consumer<byte[], byte[]> consumer;
   private boolean enablePartitionMatching = false;
+
+  private Converter keyConverter;
+  private Converter valueConverter;
 
   protected AtomicBoolean shutDown = new AtomicBoolean(false);
 
@@ -93,6 +97,9 @@ public class MirusSourceTask extends SourceTask {
     this.destinationTopicNameSuffix = config.getDestinationTopicNameSuffix();
     this.enablePartitionMatching = config.getEnablePartitionMatching();
 
+    this.keyConverter = config.getKeyConverter();
+    this.valueConverter = config.getValueConverter();
+
     logger.debug("Task starting with partitions: {}", config.getInternalTaskPartitions());
 
     this.consumer = consumerFactory.newConsumer(consumerProperties);
@@ -111,7 +118,7 @@ public class MirusSourceTask extends SourceTask {
     }
   }
 
-  protected void shutDownTask() {
+  private void shutDownTask() {
     logger.debug("Task shutting down");
     consumer.close();
   }
@@ -193,6 +200,13 @@ public class MirusSourceTask extends SourceTask {
       sourceHeaders.forEach(header -> connectHeaders.addBytes(header.key(), header.value()));
     }
 
+    String topic = destinationTopicNamePrefix + consumerRecord.topic() + destinationTopicNameSuffix;
+
+    SchemaAndValue keyAndSchema = this.keyConverter.toConnectData(topic, consumerRecord.key());
+
+    SchemaAndValue valueAndSchema =
+        this.valueConverter.toConnectData(topic, consumerRecord.value());
+
     /*
      * NOTE: By adding one to the offset here we are following the Kafka convention that the
      * committed offset should always be the offset of the *next* message that your application will
@@ -201,12 +215,12 @@ public class MirusSourceTask extends SourceTask {
     return new SourceRecord(
         sourcePartition,
         offsetMap(consumerRecord.offset() + 1),
-        destinationTopicNamePrefix + consumerRecord.topic() + destinationTopicNameSuffix,
+        topic,
         enablePartitionMatching ? consumerRecord.partition() : null,
-        Schema.OPTIONAL_BYTES_SCHEMA,
-        consumerRecord.key(),
-        Schema.OPTIONAL_BYTES_SCHEMA,
-        consumerRecord.value(),
+        keyAndSchema.schema(),
+        keyAndSchema.value(),
+        valueAndSchema.schema(),
+        valueAndSchema.value(),
         consumerRecord.timestamp(),
         connectHeaders);
   }
