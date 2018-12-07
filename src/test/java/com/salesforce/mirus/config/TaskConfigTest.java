@@ -16,7 +16,6 @@ import static org.hamcrest.Matchers.is;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.kafka.connect.converters.ByteArrayConverter;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.junit.Assert;
@@ -57,6 +56,7 @@ public class TaskConfigTest {
     TaskConfig taskConfig = new TaskConfig(Collections.emptyMap());
     assertThat(taskConfig.getKeyConverter(), instanceOf(ByteArrayConverter.class));
     assertThat(taskConfig.getValueConverter(), instanceOf(ByteArrayConverter.class));
+    assertThat(taskConfig.getHeaderConverter(), instanceOf(ByteArrayConverter.class));
   }
 
   @Test
@@ -64,10 +64,12 @@ public class TaskConfigTest {
     properties = new HashMap<>();
     properties.put("source.key.converter", "org.apache.kafka.connect.json.JsonConverter");
     properties.put("source.value.converter", "org.apache.kafka.connect.json.JsonConverter");
+    properties.put("source.header.converter", "org.apache.kafka.connect.json.JsonConverter");
 
     TaskConfig taskConfig = new TaskConfig(properties);
     assertThat(taskConfig.getKeyConverter(), instanceOf(JsonConverter.class));
     assertThat(taskConfig.getValueConverter(), instanceOf(JsonConverter.class));
+    assertThat(taskConfig.getHeaderConverter(), instanceOf(JsonConverter.class));
   }
 
   @Test
