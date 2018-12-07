@@ -24,7 +24,8 @@ public class TaskConfigDefinition {
           SourceConfigDefinition.DESTINATION_TOPIC_NAME_SUFFIX,
           SourceConfigDefinition.ENABLE_PARTITION_MATCHING,
           SourceConfigDefinition.SOURCE_KEY_CONVERTER,
-          SourceConfigDefinition.SOURCE_VALUE_CONVERTER);
+          SourceConfigDefinition.SOURCE_VALUE_CONVERTER,
+          SourceConfigDefinition.SOURCE_HEADER_CONVERTER);
 
   static ConfigDef configDef() {
     ConfigDef configDef = new ConfigDef();

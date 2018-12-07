@@ -11,6 +11,7 @@ package com.salesforce.mirus.config;
 import java.util.*;
 import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.ConverterType;
+import org.apache.kafka.connect.storage.HeaderConverter;
 import org.apache.kafka.connect.storage.StringConverterConfig;
 import org.apache.kafka.connect.transforms.util.SimpleConfig;
 
@@ -89,5 +90,15 @@ public class TaskConfig {
 
     return config.getConfiguredInstance(
         SourceConfigDefinition.SOURCE_VALUE_CONVERTER.key, Converter.class);
+  }
+
+  public HeaderConverter getHeaderConverter() {
+    Map<String, Object> conf = simpleConfig.originals();
+    conf.put(StringConverterConfig.TYPE_CONFIG, ConverterType.HEADER.getName());
+
+    SimpleConfig config = new SimpleConfig(TaskConfigDefinition.configDef(), conf);
+
+    return config.getConfiguredInstance(
+        SourceConfigDefinition.SOURCE_HEADER_CONVERTER.key, HeaderConverter.class);
   }
 }

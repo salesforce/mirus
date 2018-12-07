@@ -28,6 +28,7 @@ import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
 import org.apache.kafka.connect.storage.Converter;
+import org.apache.kafka.connect.storage.HeaderConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,6 +62,7 @@ public class MirusSourceTask extends SourceTask {
 
   private Converter keyConverter;
   private Converter valueConverter;
+  private HeaderConverter headerConverter;
 
   protected AtomicBoolean shutDown = new AtomicBoolean(false);
 
@@ -99,6 +101,7 @@ public class MirusSourceTask extends SourceTask {
 
     this.keyConverter = config.getKeyConverter();
     this.valueConverter = config.getValueConverter();
+    this.headerConverter = config.getHeaderConverter();
 
     logger.debug("Task starting with partitions: {}", config.getInternalTaskPartitions());
 
@@ -194,13 +197,17 @@ public class MirusSourceTask extends SourceTask {
         TopicPartitionSerDe.asMap(
             new TopicPartition(consumerRecord.topic(), consumerRecord.partition()));
 
+    String topic = destinationTopicNamePrefix + consumerRecord.topic() + destinationTopicNameSuffix;
+
     ConnectHeaders connectHeaders = new ConnectHeaders();
     Headers sourceHeaders = consumerRecord.headers();
     if (sourceHeaders != null) {
-      sourceHeaders.forEach(header -> connectHeaders.addBytes(header.key(), header.value()));
+      sourceHeaders.forEach(
+          header ->
+              connectHeaders.add(
+                  header.key(),
+                  this.headerConverter.toConnectHeader(topic, header.key(), header.value())));
     }
-
-    String topic = destinationTopicNamePrefix + consumerRecord.topic() + destinationTopicNameSuffix;
 
     SchemaAndValue keyAndSchema = this.keyConverter.toConnectData(topic, consumerRecord.key());
 
