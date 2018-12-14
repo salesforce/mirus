@@ -62,6 +62,24 @@ public enum SourceConfigDefinition {
       false,
       ConfigDef.Importance.MEDIUM,
       "Ensures records are written to the destination partition with the same identifier as the source partition"),
+  SOURCE_KEY_CONVERTER(
+      "source.key.converter",
+      ConfigDef.Type.CLASS,
+      "org.apache.kafka.connect.converters.ByteArrayConverter",
+      ConfigDef.Importance.MEDIUM,
+      "Converter class to apply to source record keys"),
+  SOURCE_VALUE_CONVERTER(
+      "source.value.converter",
+      ConfigDef.Type.CLASS,
+      "org.apache.kafka.connect.converters.ByteArrayConverter",
+      ConfigDef.Importance.MEDIUM,
+      "Converter class to apply to source record values"),
+  SOURCE_HEADER_CONVERTER(
+      "source.header.converter",
+      ConfigDef.Type.CLASS,
+      "org.apache.kafka.connect.converters.ByteArrayConverter",
+      ConfigDef.Importance.MEDIUM,
+      "Converter class to apply to source record headers"),
   DESTINATION_BOOTSTRAP_SERVERS(
       "destination.bootstrap.servers",
       ConfigDef.Type.STRING,

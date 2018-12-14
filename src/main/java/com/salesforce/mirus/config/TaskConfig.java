@@ -8,9 +8,11 @@
 
 package com.salesforce.mirus.config;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import org.apache.kafka.connect.storage.Converter;
+import org.apache.kafka.connect.storage.ConverterType;
+import org.apache.kafka.connect.storage.HeaderConverter;
+import org.apache.kafka.connect.storage.StringConverterConfig;
 import org.apache.kafka.connect.transforms.util.SimpleConfig;
 
 /**
@@ -68,5 +70,35 @@ public class TaskConfig {
 
   public boolean getEnablePartitionMatching() {
     return simpleConfig.getBoolean(SourceConfigDefinition.ENABLE_PARTITION_MATCHING.key);
+  }
+
+  public Converter getKeyConverter() {
+    Map<String, Object> conf = simpleConfig.originals();
+    conf.put(StringConverterConfig.TYPE_CONFIG, ConverterType.KEY.getName());
+
+    SimpleConfig config = new SimpleConfig(TaskConfigDefinition.configDef(), conf);
+
+    return config.getConfiguredInstance(
+        SourceConfigDefinition.SOURCE_KEY_CONVERTER.key, Converter.class);
+  }
+
+  public Converter getValueConverter() {
+    Map<String, Object> conf = simpleConfig.originals();
+    conf.put(StringConverterConfig.TYPE_CONFIG, ConverterType.VALUE.getName());
+
+    SimpleConfig config = new SimpleConfig(TaskConfigDefinition.configDef(), conf);
+
+    return config.getConfiguredInstance(
+        SourceConfigDefinition.SOURCE_VALUE_CONVERTER.key, Converter.class);
+  }
+
+  public HeaderConverter getHeaderConverter() {
+    Map<String, Object> conf = simpleConfig.originals();
+    conf.put(StringConverterConfig.TYPE_CONFIG, ConverterType.HEADER.getName());
+
+    SimpleConfig config = new SimpleConfig(TaskConfigDefinition.configDef(), conf);
+
+    return config.getConfiguredInstance(
+        SourceConfigDefinition.SOURCE_HEADER_CONVERTER.key, HeaderConverter.class);
   }
 }

@@ -12,6 +12,7 @@ import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
 
+import com.salesforce.mirus.config.SourceConfigDefinition;
 import com.salesforce.mirus.config.TaskConfigDefinition;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -19,6 +20,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -33,6 +35,8 @@ import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.connect.data.ConnectSchema;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTaskContext;
@@ -161,6 +165,51 @@ public class MirusSourceTaskTest {
   }
 
   @Test
+  public void testSourceRecordsWorksWithHeadersWithHeaderConverter() {
+    final String topic = "topica";
+    final int partition = 0;
+    final int offset = 123;
+    final long timestamp = 314159;
+
+    Map<String, String> properties = mockTaskProperties();
+    properties.put(
+        SourceConfigDefinition.SOURCE_HEADER_CONVERTER.getKey(),
+        "org.apache.kafka.connect.json.JsonConverter");
+
+    mirusSourceTask.start(properties);
+
+    Map<TopicPartition, List<ConsumerRecord<byte[], byte[]>>> records = new HashMap<>();
+    Headers headers = new RecordHeaders();
+    headers.add(
+        "h1",
+        "{\"schema\": {\"type\": \"struct\",\"fields\": [{\"type\": \"string\",\"optional\": true,\"field\": \"version\"}],\"optional\": false},\"payload\": {\"version\": \"v1\"}}"
+            .getBytes(StandardCharsets.UTF_8));
+    headers.add(
+        "h2",
+        "{\"schema\": {\"type\": \"struct\",\"fields\": [{\"type\": \"string\",\"optional\": true,\"field\": \"version\"}],\"optional\": false},\"payload\": {\"version\": \"v2\"}}"
+            .getBytes(StandardCharsets.UTF_8));
+    records.put(
+        new TopicPartition(topic, partition),
+        Collections.singletonList(newConsumerRecord(topic, partition, offset, timestamp, headers)));
+    ConsumerRecords<byte[], byte[]> pollResult = new ConsumerRecords<>(records);
+
+    List<SourceRecord> result = mirusSourceTask.sourceRecords(pollResult);
+
+    Iterator<Header> connectHeaders = result.get(0).headers().iterator();
+    Header header1 = connectHeaders.next();
+    assertThat(header1.key(), is("h1"));
+    assertThat(header1.value(), instanceOf(Struct.class));
+    Struct header1Value = (Struct) header1.value();
+    assertThat(header1Value.getString("version"), is("v1"));
+
+    Header header2 = connectHeaders.next();
+    assertThat(header2.key(), is("h2"));
+    assertThat(header2.value(), instanceOf(Struct.class));
+    Struct header2Value = (Struct) header2.value();
+    assertThat(header2Value.getString("version"), is("v2"));
+  }
+
+  @Test
   public void testSourceRecordsWorksWithNoHeaders() {
     final String topic = "topica";
     final int partition = 0;
@@ -182,5 +231,37 @@ public class MirusSourceTaskTest {
     assertThat(result.get(0).sourceOffset(), is(MirusSourceTask.offsetMap(offset + 1L)));
     assertThat(result.get(0).timestamp(), is(timestamp));
     assertThat(result.get(0).headers().size(), is(0));
+  }
+
+  @Test
+  public void testJsonConverterRecord() {
+    Map<String, String> properties = mockTaskProperties();
+    properties.put(
+        SourceConfigDefinition.SOURCE_KEY_CONVERTER.getKey(),
+        "org.apache.kafka.connect.json.JsonConverter");
+    properties.put(
+        SourceConfigDefinition.SOURCE_VALUE_CONVERTER.getKey(),
+        "org.apache.kafka.connect.json.JsonConverter");
+
+    mirusSourceTask.start(properties);
+    mockConsumer.addRecord(
+        new ConsumerRecord<>(
+            TOPIC,
+            0,
+            0,
+            "{\"schema\": {\"type\": \"struct\",\"fields\": [{\"type\": \"string\",\"optional\": true,\"field\": \"id\"}],\"optional\": false},\"payload\": {\"id\": \"hiThereMirusKey\"}}"
+                .getBytes(StandardCharsets.UTF_8),
+            "{\"schema\": {\"type\": \"struct\",\"fields\": [{\"type\": \"string\",\"optional\": true,\"field\": \"id\"}],\"optional\": false},\"payload\": {\"id\": \"hiThereMirusValue\"}}"
+                .getBytes(StandardCharsets.UTF_8)));
+
+    List<SourceRecord> result = mirusSourceTask.poll();
+    assertThat(result.size(), is(1));
+
+    SourceRecord sourceRecord = result.get(0);
+    assertThat(sourceRecord.headers().size(), is(0));
+    assertThat(sourceRecord.kafkaPartition(), is(nullValue())); // Since partition matching is off
+    assertThat(sourceRecord.keySchema().type(), is(Schema.Type.STRUCT));
+    assertThat(sourceRecord.valueSchema().type(), is(Schema.Type.STRUCT));
+    assertThat(sourceRecord.timestamp(), is(-1L)); // Since the source record has no timestamp
   }
 }
