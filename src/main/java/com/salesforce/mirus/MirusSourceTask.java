@@ -121,7 +121,7 @@ public class MirusSourceTask extends SourceTask {
     }
   }
 
-  private void shutDownTask() {
+  protected void shutDownTask() {
     logger.debug("Task shutting down");
     consumer.close();
   }
