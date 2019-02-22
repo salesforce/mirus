@@ -16,7 +16,7 @@ readonly base_dir=$(cd $(dirname "$0")/.. && pwd -P)  # Platform independent
 
 MIRUS_MAIN_CLASS=${MIRUS_MAIN_CLASS:-com.salesforce.mirus.Mirus}
 
-CLASSPATH=$(find ${base_dir} -name 'mirus.jar')
+CLASSPATH=${CLASSPATH:-"$(find ${base_dir} -name 'mirus.jar')"}
 
 # Log directory to use.
 if [ -z "${LOG_DIR}" ]; then
