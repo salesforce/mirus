@@ -11,6 +11,8 @@ package com.salesforce.mirus.config;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.ConfigDef.ConfigKey;
+import org.apache.kafka.connect.runtime.ConnectorConfig;
 
 /**
  * Properties listed here can be applied to the MirusSourceConnector configuration object, which is
@@ -19,7 +21,6 @@ import org.apache.kafka.common.config.ConfigDef;
  * information on the destination cluster for topic metadata validation.
  */
 public enum SourceConfigDefinition {
-  NAME("name", ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Unique name for this source"),
   TOPICS_WHITELIST(
       "topics.whitelist",
       ConfigDef.Type.LIST,
@@ -110,6 +111,13 @@ public enum SourceConfigDefinition {
     ConfigDef configDef = new ConfigDef();
     for (SourceConfigDefinition f : SourceConfigDefinition.values()) {
       configDef = configDef.define(f.key, f.type, f.defaultValue, f.importance, f.doc);
+    }
+
+    // Share name and transforms config definitions from ConnectorConfig
+    for (ConfigKey key : ConnectorConfig.configDef().configKeys().values()) {
+      if ("Transforms".equals(key.group) || ConnectorConfig.NAME_CONFIG.equals(key.name)) {
+        configDef.define(key);
+      }
     }
     return configDef;
   }

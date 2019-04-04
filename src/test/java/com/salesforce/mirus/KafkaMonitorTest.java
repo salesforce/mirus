@@ -8,9 +8,8 @@
 
 package com.salesforce.mirus;
 
-import static org.hamcrest.CoreMatchers.hasItem;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.CoreMatchers.*;
+import static org.hamcrest.Matchers.contains;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
 
@@ -21,7 +20,6 @@ import com.salesforce.mirus.config.TaskConfig;
 import com.salesforce.mirus.config.TaskConfigDefinition;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +43,8 @@ public class KafkaMonitorTest {
     Map<String, String> properties = new HashMap<>();
     properties.put(SourceConfigDefinition.TOPICS_REGEX.getKey(), "topic.*");
     properties.put(TaskConfigDefinition.CONSUMER_CLIENT_ID, "testId");
+    properties.put("name", "mockKafkaMonitor");
+    properties.put("connector.class", "com.salesforce.mirus.MirusSourceConnector");
     SourceConfig config = new SourceConfig(properties);
     this.mockSourceConsumer = mockSourceConsumer();
     this.mockDestinationConsumer = mockDestinationConsumer();
@@ -75,6 +75,7 @@ public class KafkaMonitorTest {
     updateMockPartitions(mockConsumer, "topic3", 1);
     updateMockPartitions(mockConsumer, "topic4", 1);
     updateMockPartitions(mockConsumer, "topic5", 1);
+    updateMockPartitions(mockConsumer, "reroute.outgoing", 1);
     return mockConsumer;
   }
 
@@ -85,7 +86,19 @@ public class KafkaMonitorTest {
     updateMockPartitions(mockConsumer, "topic2", 1);
     updateMockPartitions(mockConsumer, "topic3", 1);
     updateMockPartitions(mockConsumer, "topic4", 1);
+    updateMockPartitions(mockConsumer, "reroute.incoming", 1);
     return mockConsumer;
+  }
+
+  private List<TopicPartition> assignedTopicPartitionsFromTaskConfigs(
+      List<Map<String, String>> taskConfigs) {
+    return taskConfigs
+        .stream()
+        // Get the string value of partition assignment for each task.
+        .map(i -> new TaskConfig(i).getInternalTaskPartitions())
+        // Then parse that into TopicPartitions and flatten into a single list.
+        .flatMap(i -> TopicPartitionSerDe.parseTopicPartitionList(i).stream())
+        .collect(Collectors.toList());
   }
 
   @Test
@@ -93,23 +106,13 @@ public class KafkaMonitorTest {
     kafkaMonitor.partitionsChanged();
     List<Map<String, String>> result = kafkaMonitor.taskConfigs(3);
 
-    List<List<TopicPartition>> partitions =
-        result
-            .stream()
-            .map(i -> new TaskConfig(i).getInternalTaskPartitions())
-            .map(TopicPartitionSerDe::parseTopicPartitionList)
-            .collect(Collectors.toList());
+    List<TopicPartition> partitions = assignedTopicPartitionsFromTaskConfigs(result);
 
     // Topic 5 is not present so should be removed from the partition list.
-    assertThat(
-        partitions.stream().flatMap(Collection::stream).collect(Collectors.toSet()),
-        not(hasItem(new TopicPartition("topic5", 0))));
+    assertThat(partitions, not(hasItem(new TopicPartition("topic5", 0))));
 
     // Only 5 partitions should be assigned, as only 5 partitions are valid.
-    assertThat(partitions.size(), is(3));
-    assertThat(partitions.get(0).size(), is(2));
-    assertThat(partitions.get(1).size(), is(2));
-    assertThat(partitions.get(2).size(), is(1));
+    assertThat(partitions.size(), is(5));
   }
 
   @Test
@@ -137,5 +140,37 @@ public class KafkaMonitorTest {
             new PartitionInfo("topic1", 1, null, null, null),
             new PartitionInfo("topic1", 0, null, null, null)));
     assertThat(kafkaMonitor.partitionsChanged(), is(false));
+  }
+
+  @Test
+  public void shouldApplyTopicRenameTransforms() {
+    Map<String, String> properties = new HashMap<>();
+    properties.put(SourceConfigDefinition.TOPICS_REGEX.getKey(), "reroute.*");
+    properties.put(TaskConfigDefinition.CONSUMER_CLIENT_ID, "testId");
+    properties.put("name", "mockKafkaMonitor");
+    properties.put("connector.class", "com.salesforce.mirus.MirusSourceConnector");
+    properties.put("transforms", "reroute");
+    properties.put("transforms.reroute.type", "org.apache.kafka.connect.transforms.RegexRouter");
+    properties.put("transforms.reroute.regex", "^reroute\\.outgoing$");
+    properties.put("transforms.reroute.replacement", "reroute.incoming");
+    SourceConfig config = new SourceConfig(properties);
+
+    MockConsumer<byte[], byte[]> mockSource = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
+    updateMockPartitions(mockSource, "reroute.outgoing", 1);
+
+    MockConsumer<byte[], byte[]> mockDest = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
+    updateMockPartitions(mockDest, "reroute.incoming", 1);
+
+    TaskConfigBuilder taskConfigBuilder =
+        new TaskConfigBuilder(new RoundRobinTaskAssignor(), config);
+    KafkaMonitor monitor =
+        new KafkaMonitor(
+            mock(ConnectorContext.class), config, mockSource, mockDest, taskConfigBuilder);
+
+    monitor.partitionsChanged();
+    List<Map<String, String>> result = monitor.taskConfigs(3);
+
+    List<TopicPartition> partitions = assignedTopicPartitionsFromTaskConfigs(result);
+    assertThat(partitions, contains(new TopicPartition("reroute.incoming", 0)));
   }
 }

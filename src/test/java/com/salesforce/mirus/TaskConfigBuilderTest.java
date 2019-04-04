@@ -8,13 +8,11 @@
 
 package com.salesforce.mirus;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.assertThat;
 
 import com.salesforce.mirus.assignment.RoundRobinTaskAssignor;
 import com.salesforce.mirus.config.SourceConfig;
-import com.salesforce.mirus.config.SourceConfigDefinition;
 import com.salesforce.mirus.config.TaskConfigDefinition;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.connect.runtime.ConnectorConfig;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -31,7 +30,7 @@ public class TaskConfigBuilderTest {
   private List<TopicPartition> topicPartitionList;
 
   private TaskConfigBuilder newBuilder(Map<String, String> properties) {
-    properties.put(SourceConfigDefinition.NAME.getKey(), "source-name");
+    properties.put(ConnectorConfig.NAME_CONFIG, "source-name");
     properties.put(TaskConfigDefinition.CONSUMER_CLIENT_ID, "test-");
     return new TaskConfigBuilder(new RoundRobinTaskAssignor(), new SourceConfig(properties));
   }

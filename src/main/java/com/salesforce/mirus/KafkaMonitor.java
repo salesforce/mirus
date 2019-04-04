@@ -27,6 +27,10 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.RetriableException;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.connect.connector.ConnectorContext;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.source.SourceRecord;
+import org.apache.kafka.connect.transforms.RegexRouter;
+import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,6 +60,7 @@ class KafkaMonitor implements Runnable {
   private final SourcePartitionValidator.MatchingStrategy validationStrategy;
   private final MissingPartitionsJmxReporter missingPartsJmxReporter =
       new MissingPartitionsJmxReporter();
+  private final List<Transformation<SourceRecord>> routers;
 
   // The current list of partitions to replicate.
   private volatile List<TopicPartition> topicPartitionList;
@@ -89,6 +94,45 @@ class KafkaMonitor implements Runnable {
         config.getEnablePartitionMatching()
             ? SourcePartitionValidator.MatchingStrategy.PARTITION
             : SourcePartitionValidator.MatchingStrategy.TOPIC;
+    this.routers = this.validateTransformations(config.transformations());
+  }
+
+  private List<Transformation<SourceRecord>> validateTransformations(
+      List<Transformation<SourceRecord>> transformations) {
+    List<Transformation<SourceRecord>> regexRouters = new ArrayList<>();
+    for (Transformation<SourceRecord> transform : transformations) {
+      String transformName = transform.getClass().getSimpleName();
+      if (transform instanceof RegexRouter) {
+        regexRouters.add(transform);
+        // Slightly awkward check to see if any other routing transforms are configured
+      } else if (transformName.contains("Router")) {
+        logger.error(
+            "Unsupported Router Transform %s found. Destination topic checking may not work.",
+            transformName);
+      } else {
+        logger.debug("Ignoring non-routing Transformation {}", transformName);
+      }
+    }
+    return regexRouters;
+  }
+
+  private String applyRoutersToTopic(String topic) {
+    TopicPartition topicPartition = new TopicPartition(topic, 0);
+    Map<String, Object> sourcePartition = TopicPartitionSerDe.asMap(topicPartition);
+    SourceRecord record =
+        new SourceRecord(
+            sourcePartition,
+            null,
+            topicPartition.topic(),
+            topicPartition.partition(),
+            Schema.BYTES_SCHEMA,
+            null,
+            Schema.OPTIONAL_BYTES_SCHEMA,
+            null);
+    for (Transformation<SourceRecord> transform : this.routers) {
+      record = transform.apply(record);
+    }
+    return record.topic();
   }
 
   private static Consumer<byte[], byte[]> newSourceConsumer(SourceConfig config) {
@@ -210,7 +254,8 @@ class KafkaMonitor implements Runnable {
     }
 
     SourcePartitionValidator sourcePartitionValidator =
-        new SourcePartitionValidator(destinationConsumer, validationStrategy);
+        new SourcePartitionValidator(
+            destinationConsumer, validationStrategy, this::applyRoutersToTopic);
 
     // Split the source partition list into those contained in the destination, and those
     // missing. Using toCollection(ArrayList::new) to guarantee we can sort successfully.

@@ -10,6 +10,7 @@ package com.salesforce.mirus;
 
 import java.util.Collection;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.common.TopicPartition;
@@ -21,11 +22,15 @@ class SourcePartitionValidator {
   private final Consumer<byte[], byte[]> destinationConsumer;
   private final Set<TopicPartition> destinationPartitionIds;
   private final KeyStrategy keyStrategy;
+  private final Function<String, String> routerApplicationFunction;
 
   SourcePartitionValidator(
-      Consumer<byte[], byte[]> destinationConsumer, MatchingStrategy matchingStrategy) {
+      Consumer<byte[], byte[]> destinationConsumer,
+      MatchingStrategy matchingStrategy,
+      Function<String, String> routerApplicationFunction) {
     this.keyStrategy = matchingStrategy.keyStrategy;
     this.destinationConsumer = destinationConsumer;
+    this.routerApplicationFunction = routerApplicationFunction;
     this.destinationPartitionIds = destinationPartitionIds();
   }
 
@@ -44,8 +49,15 @@ class SourcePartitionValidator {
   }
 
   boolean isHealthy(TopicPartition topicPartition) {
+    TopicPartition targetTopicPartition = applyRoutersToTopic(topicPartition);
     return destinationPartitionIds.contains(
-        keyStrategy.topicPartitionKey(topicPartition.topic(), topicPartition.partition()));
+        keyStrategy.topicPartitionKey(
+            targetTopicPartition.topic(), targetTopicPartition.partition()));
+  }
+
+  private TopicPartition applyRoutersToTopic(TopicPartition topicPartition) {
+    String newTopic = this.routerApplicationFunction.apply(topicPartition.topic());
+    return new TopicPartition(newTopic, topicPartition.partition());
   }
 
   enum MatchingStrategy {
