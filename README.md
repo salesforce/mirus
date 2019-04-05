@@ -200,6 +200,17 @@ Worker Properties file provided at startup. The Kafka Producer instances created
 can also be configured using a `producer.` prefix on the standard
 [Kafka Producer properties](https://kafka.apache.org/documentation/#producerconfigs).
 
+## Destination Topic Checking
+
+By default, Mirus checks that the destination topic exists in the destination Kafka cluster before
+stating to replicate data to it. This feature can be disabled by setting the
+[enable.destination.topic.checking](src/main/java/com/salesforce/mirus/config/SourceConfigDefinition.java#L66)
+config option to `false`.
+
+As of version 0.2.0, destination topic checking can also support topic re-routing performed by the
+[RegexRouter](https://kafka.apache.org/documentation/#connect_transforms) Single-Message Transformation.
+No other `Router` Transformations are supported, so destination topic checking must be disabled in order
+to use them.
 
 ## Developer Info
 

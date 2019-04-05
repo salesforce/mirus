@@ -39,7 +39,9 @@ import org.slf4j.LoggerFactory;
  * destination clusters to maintain an up-to-date list of partitions eligible for mirroring. When a
  * change is detected the thread requests that tasks for this source are reconfigured. Partitions
  * that match the configured whitelist are validated to ensure they exist in both source and the
- * destination cluster.
+ * destination cluster. Validation supports topic re-routing with the RegexRouter Transformation,
+ * but no other topic re-routing is supported. Validation may be disabled by setting the
+ * enable.destination.topic.checking config option to false.
  *
  * <p>MirusSourceConnector also uses KafkaMonitor for task assignment. A round-robin style algorithm
  * is used to assign partitions to SourceTask instances.
@@ -61,6 +63,7 @@ class KafkaMonitor implements Runnable {
   private final MissingPartitionsJmxReporter missingPartsJmxReporter =
       new MissingPartitionsJmxReporter();
   private final List<Transformation<SourceRecord>> routers;
+  private final boolean topicCheckingEnabled;
 
   // The current list of partitions to replicate.
   private volatile List<TopicPartition> topicPartitionList;
@@ -94,23 +97,30 @@ class KafkaMonitor implements Runnable {
         config.getEnablePartitionMatching()
             ? SourcePartitionValidator.MatchingStrategy.PARTITION
             : SourcePartitionValidator.MatchingStrategy.TOPIC;
+    this.topicCheckingEnabled = config.getTopicCheckingEnabled();
     this.routers = this.validateTransformations(config.transformations());
   }
 
   private List<Transformation<SourceRecord>> validateTransformations(
       List<Transformation<SourceRecord>> transformations) {
     List<Transformation<SourceRecord>> regexRouters = new ArrayList<>();
-    for (Transformation<SourceRecord> transform : transformations) {
-      String transformName = transform.getClass().getSimpleName();
-      if (transform instanceof RegexRouter) {
-        regexRouters.add(transform);
-        // Slightly awkward check to see if any other routing transforms are configured
-      } else if (transformName.contains("Router")) {
-        logger.error(
-            "Unsupported Router Transform %s found. Destination topic checking may not work.",
-            transformName);
-      } else {
-        logger.debug("Ignoring non-routing Transformation {}", transformName);
+
+    // No need to validate transforms if we're not checking destination partitions
+    if (this.topicCheckingEnabled) {
+      for (Transformation<SourceRecord> transform : transformations) {
+        String transformName = transform.getClass().getSimpleName();
+        if (transform instanceof RegexRouter) {
+          regexRouters.add(transform);
+          // Slightly awkward check to see if any other routing transforms are configured
+        } else if (transformName.contains("Router")) {
+          throw new IllegalArgumentException(
+              String.format(
+                  "Unsupported Router Transformation %s found."
+                      + " To use it, please disable destination topic checking by setting 'enable.destination.topic.checking' to false.",
+                  transformName));
+        } else {
+          logger.debug("Ignoring non-routing Transformation {}", transformName);
+        }
       }
     }
     return regexRouters;
@@ -253,6 +263,20 @@ class KafkaMonitor implements Runnable {
       sourcePartitionList = fetchMatchingPartitions(sourceConsumer);
     }
 
+    List<TopicPartition> result;
+    if (this.topicCheckingEnabled) {
+      result = getDestinationAvailablePartitions(sourcePartitionList);
+    } else {
+      result = sourcePartitionList;
+    }
+
+    // Sort the result for order-independent comparison
+    result.sort(Comparator.comparing(tp -> tp.topic() + tp.partition()));
+    return result;
+  }
+
+  private List<TopicPartition> getDestinationAvailablePartitions(
+      List<TopicPartition> sourcePartitionList) {
     SourcePartitionValidator sourcePartitionValidator =
         new SourcePartitionValidator(
             destinationConsumer, validationStrategy, this::applyRoutersToTopic);
@@ -276,9 +300,6 @@ class KafkaMonitor implements Runnable {
     missingPartsJmxReporter.recordMetric(missingPartitions.size());
 
     List<TopicPartition> result = partitionedSourceIds.get(true);
-
-    // Sort the result for order-independent comparison
-    result.sort(Comparator.comparing(tp -> tp.topic() + tp.partition()));
     return result;
   }
 

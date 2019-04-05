@@ -51,6 +51,10 @@ public class SourceConfig {
     return simpleConfig.getBoolean(SourceConfigDefinition.ENABLE_PARTITION_MATCHING.key);
   }
 
+  public boolean getTopicCheckingEnabled() {
+    return simpleConfig.getBoolean(SourceConfigDefinition.ENABLE_DESTINATION_TOPIC_CHECKING.key);
+  }
+
   public String getName() {
     return simpleConfig.getString(ConnectorConfig.NAME_CONFIG);
   }

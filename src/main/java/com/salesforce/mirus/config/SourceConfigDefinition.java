@@ -63,6 +63,15 @@ public enum SourceConfigDefinition {
       false,
       ConfigDef.Importance.MEDIUM,
       "Ensures records are written to the destination partition with the same identifier as the source partition"),
+  ENABLE_DESTINATION_TOPIC_CHECKING(
+      "enable.destination.topic.checking",
+      ConfigDef.Type.BOOLEAN,
+      true,
+      ConfigDef.Importance.LOW,
+      "Enables destination topic checking to ensure the topic exists in the destination cluster."
+          + " Supports the RegexRouter SMT but not other Router transformations or other topic-rerouting"
+          + " transformations. Disable to use other Kafka Connect Transformations to reroute messages"
+          + "to different topics."),
   SOURCE_KEY_CONVERTER(
       "source.key.converter",
       ConfigDef.Type.CLASS,

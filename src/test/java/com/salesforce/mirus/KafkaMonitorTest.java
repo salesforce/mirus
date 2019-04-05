@@ -8,8 +8,10 @@
 
 package com.salesforce.mirus;
 
-import static org.hamcrest.CoreMatchers.*;
-import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.CoreMatchers.hasItem;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
 
@@ -40,11 +42,7 @@ public class KafkaMonitorTest {
 
   @Before
   public void setUp() {
-    Map<String, String> properties = new HashMap<>();
-    properties.put(SourceConfigDefinition.TOPICS_REGEX.getKey(), "topic.*");
-    properties.put(TaskConfigDefinition.CONSUMER_CLIENT_ID, "testId");
-    properties.put("name", "mockKafkaMonitor");
-    properties.put("connector.class", "com.salesforce.mirus.MirusSourceConnector");
+    Map<String, String> properties = getBaseProperties();
     SourceConfig config = new SourceConfig(properties);
     this.mockSourceConsumer = mockSourceConsumer();
     this.mockDestinationConsumer = mockDestinationConsumer();
@@ -66,6 +64,15 @@ public class KafkaMonitorTest {
       partitionInfoList.add(new PartitionInfo(topicName, i, null, null, null));
     }
     mockConsumer.updatePartitions(topicName, partitionInfoList);
+  }
+
+  private Map<String, String> getBaseProperties() {
+    Map<String, String> properties = new HashMap<>();
+    properties.put(SourceConfigDefinition.TOPICS_REGEX.getKey(), "topic.*");
+    properties.put(TaskConfigDefinition.CONSUMER_CLIENT_ID, "testId");
+    properties.put("name", "mockKafkaMonitor");
+    properties.put("connector.class", "com.salesforce.mirus.MirusSourceConnector");
+    return properties;
   }
 
   private MockConsumer<byte[], byte[]> mockSourceConsumer() {
@@ -144,11 +151,8 @@ public class KafkaMonitorTest {
 
   @Test
   public void shouldApplyTopicRenameTransforms() {
-    Map<String, String> properties = new HashMap<>();
+    Map<String, String> properties = getBaseProperties();
     properties.put(SourceConfigDefinition.TOPICS_REGEX.getKey(), "reroute.*");
-    properties.put(TaskConfigDefinition.CONSUMER_CLIENT_ID, "testId");
-    properties.put("name", "mockKafkaMonitor");
-    properties.put("connector.class", "com.salesforce.mirus.MirusSourceConnector");
     properties.put("transforms", "reroute");
     properties.put("transforms.reroute.type", "org.apache.kafka.connect.transforms.RegexRouter");
     properties.put("transforms.reroute.regex", "^reroute\\.outgoing$");
@@ -171,6 +175,81 @@ public class KafkaMonitorTest {
     List<Map<String, String>> result = monitor.taskConfigs(3);
 
     List<TopicPartition> partitions = assignedTopicPartitionsFromTaskConfigs(result);
-    assertThat(partitions, contains(new TopicPartition("reroute.incoming", 0)));
+    assertThat(partitions, contains(new TopicPartition("reroute.outgoing", 0)));
+  }
+
+  @Test
+  public void shouldAlwaysReplicateWhenCheckingDisabled() {
+    Map<String, String> properties = getBaseProperties();
+    properties.put(SourceConfigDefinition.ENABLE_DESTINATION_TOPIC_CHECKING.getKey(), "false");
+    SourceConfig config = new SourceConfig(properties);
+    TaskConfigBuilder taskConfigBuilder =
+        new TaskConfigBuilder(new RoundRobinTaskAssignor(), config);
+    KafkaMonitor monitor =
+        new KafkaMonitor(
+            mock(ConnectorContext.class),
+            config,
+            mockSourceConsumer,
+            mockDestinationConsumer,
+            taskConfigBuilder);
+    monitor.partitionsChanged();
+    List<Map<String, String>> result = monitor.taskConfigs(3);
+
+    List<TopicPartition> partitions = assignedTopicPartitionsFromTaskConfigs(result);
+
+    assertThat(partitions, hasItem(new TopicPartition("topic5", 0)));
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void shouldThrowWhenUnsupportedTransformationEncountered() {
+    Map<String, String> properties = getBaseProperties();
+    properties.put("transforms", "reroute");
+    properties.put(
+        "transforms.reroute.type", "org.apache.kafka.connect.transforms.TimestampRouter");
+    SourceConfig config = new SourceConfig(properties);
+    TaskConfigBuilder taskConfigBuilder =
+        new TaskConfigBuilder(new RoundRobinTaskAssignor(), config);
+
+    new KafkaMonitor(
+        mock(ConnectorContext.class),
+        config,
+        mockSourceConsumer,
+        mockDestinationConsumer,
+        taskConfigBuilder);
+  }
+
+  @Test
+  public void shouldAllowUnsupportedTransformationWhenCheckingDisabled() {
+    Map<String, String> properties = getBaseProperties();
+    properties.put(SourceConfigDefinition.ENABLE_DESTINATION_TOPIC_CHECKING.getKey(), "false");
+    properties.put("transforms", "reroute");
+    properties.put(
+        "transforms.reroute.type", "org.apache.kafka.connect.transforms.TimestampRouter");
+    SourceConfig config = new SourceConfig(properties);
+    TaskConfigBuilder taskConfigBuilder =
+        new TaskConfigBuilder(new RoundRobinTaskAssignor(), config);
+    KafkaMonitor monitor =
+        new KafkaMonitor(
+            mock(ConnectorContext.class),
+            config,
+            mockSourceConsumer,
+            mockDestinationConsumer,
+            taskConfigBuilder);
+    monitor.partitionsChanged();
+    List<Map<String, String>> result = monitor.taskConfigs(3);
+
+    List<TopicPartition> partitions = assignedTopicPartitionsFromTaskConfigs(result);
+
+    // All topics matching assignment regex, even ones not present in destination, should be
+    // replicated
+    assertThat(
+        partitions,
+        containsInAnyOrder(
+            new TopicPartition("topic1", 0),
+            new TopicPartition("topic1", 1),
+            new TopicPartition("topic2", 0),
+            new TopicPartition("topic3", 0),
+            new TopicPartition("topic4", 0),
+            new TopicPartition("topic5", 0)));
   }
 }
