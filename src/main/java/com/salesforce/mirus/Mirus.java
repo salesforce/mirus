@@ -23,16 +23,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.common.utils.Exit;
 import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.common.utils.Utils;
 import org.apache.kafka.connect.runtime.Connect;
+import org.apache.kafka.connect.runtime.HerderProvider;
 import org.apache.kafka.connect.runtime.Worker;
 import org.apache.kafka.connect.runtime.WorkerConfig;
+import org.apache.kafka.connect.runtime.WorkerConfigTransformer;
 import org.apache.kafka.connect.runtime.distributed.DistributedConfig;
 import org.apache.kafka.connect.runtime.distributed.DistributedHerder;
 import org.apache.kafka.connect.runtime.isolation.Plugins;
 import org.apache.kafka.connect.runtime.rest.RestServer;
 import org.apache.kafka.connect.storage.ConfigBackingStore;
+import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.KafkaConfigBackingStore;
 import org.apache.kafka.connect.storage.KafkaOffsetBackingStore;
 import org.apache.kafka.connect.storage.KafkaStatusBackingStore;
@@ -43,20 +47,25 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Mirus provides a custom Kafka Connect entry point. While MirusSourceConnector and MirusSourceTask
- * are compatible with the standard Kafka Connect entry point, this class offers some extensions to
- * improve operational deployment:
+ * are compatible with the standard Kafka Connect entry point {@link
+ * org.apache.kafka.connect.cli.ConnectDistributed}, this class offers some extensions to improve
+ * operational deployment:
  *
  * <ul>
  *   <li>Supports worker property value overrides, in the same format as the Kafka Server, to
  *       simplify configuration
  *   <li>Ensure client.id for internal Kafka clients use unique names by adding suffixes
+ *   <li>Initialize the {@link HerderStatusMonitor} for automated task restarts and enhanced monitoring
  * </ul>
  */
 public class Mirus {
 
-  private static final Logger logger = LoggerFactory.getLogger(Mirus.class);
+  private static final Logger log = LoggerFactory.getLogger(Mirus.class);
 
-  public static void main(String[] argv) throws Exception {
+  private final Time time = Time.SYSTEM;
+  private final long initStart = time.hiResClockMs();
+
+  public static void main(String[] argv) {
     Mirus.Args args = new Mirus.Args();
     JCommander jCommander =
         JCommander.newBuilder()
@@ -74,14 +83,23 @@ public class Mirus {
       System.exit(1);
     }
 
-    Map<String, String> workerProps =
-        !args.workerPropertiesFile.isEmpty()
-            ? Utils.propsToStringMap(Utils.loadProps(args.workerPropertiesFile))
-            : Collections.emptyMap();
+    try {
+      Map<String, String> workerProps =
+          !args.workerPropertiesFile.isEmpty()
+              ? Utils.propsToStringMap(Utils.loadProps(args.workerPropertiesFile))
+              : Collections.emptyMap();
 
-    applyOverrides(args.overrides, workerProps);
+      applyOverrides(args.overrides, workerProps);
 
-    startConnect(workerProps);
+      Mirus mirus = new Mirus();
+      Connect connect = mirus.startConnect(workerProps);
+
+      // Shutdown will be triggered by Ctrl-C or via HTTP shutdown request
+      connect.awaitStop();
+    } catch (Throwable t) {
+      log.error("Stopping due to error", t);
+      Exit.exit(2);
+    }
   }
 
   static void applyOverrides(List<String> overrides, Map<String, String> properties)
@@ -111,18 +129,27 @@ public class Mirus {
   }
 
   /**
-   * This method is based on the the standard Kafka Connect start logic as in ConnectDistributed,
-   * but with `clientid` prefix support, to prevent JMX metric names from clashing. Also supports
-   * command-line property overrides (useful for run-time port configuration), and starts the Mirus
-   * `TaskMonitor`.
+   * This method is based on the the standard Kafka Connect start logic in {@link
+   * org.apache.kafka.connect.cli.ConnectDistributed#startConnect(Map)}, but with `clientid` prefix
+   * support, to prevent JMX metric names from clashing. Also supports command-line property
+   * overrides (useful for run-time port configuration), and starts the Mirus {@link
+   * HerderStatusMonitor}.
    */
-  private static void startConnect(Map<String, String> workerProps) {
-    Time time = Time.SYSTEM;
-    MirusConfig mirusConfig = new MirusConfig(workerProps);
+  public Connect startConnect(Map<String, String> workerProps) {
+    log.info("Scanning for plugin classes. This might take a moment ...");
     Plugins plugins = new Plugins(workerProps);
     plugins.compareAndSwapWithDelegatingLoader();
+    DistributedConfig distributedConfig = configWithClientIdSuffix(workerProps, "herder");
+
+    MirusConfig mirusConfig = new MirusConfig(workerProps);
+
+    String kafkaClusterId = ConnectUtils.lookupKafkaClusterId(distributedConfig);
+    log.debug("Kafka cluster ID: {}", kafkaClusterId);
 
     RestServer rest = new RestServer(configWithClientIdSuffix(workerProps, "rest"));
+    HerderProvider provider = new HerderProvider();
+    rest.start(provider, plugins);
+
     URI advertisedUrl = rest.advertisedUrl();
     String workerId = advertisedUrl.getHost() + ":" + advertisedUrl.getPort();
 
@@ -131,20 +158,18 @@ public class Mirus {
 
     WorkerConfig workerConfigs = configWithClientIdSuffix(workerProps, "worker");
     Worker worker = new Worker(workerId, time, plugins, workerConfigs, offsetBackingStore);
+    WorkerConfigTransformer configTransformer = worker.configTransformer();
 
+    Converter internalValueConverter = worker.getInternalValueConverter();
     StatusBackingStore statusBackingStore =
-        new KafkaStatusBackingStore(time, worker.getInternalValueConverter());
+        new KafkaStatusBackingStore(time, internalValueConverter);
     statusBackingStore.configure(configWithClientIdSuffix(workerProps, "status"));
 
     ConfigBackingStore configBackingStore =
         new KafkaConfigBackingStore(
-            worker.getInternalValueConverter(),
+            internalValueConverter,
             configWithClientIdSuffix(workerProps, "config"),
-            worker.configTransformer());
-
-    DistributedConfig distributedConfig = configWithClientIdSuffix(workerProps, "herder");
-    String kafkaClusterId = ConnectUtils.lookupKafkaClusterId(distributedConfig);
-    logger.debug("Kafka cluster ID: {}", kafkaClusterId);
+            configTransformer);
 
     DistributedHerder herder =
         new DistributedHerder(
@@ -155,8 +180,8 @@ public class Mirus {
             statusBackingStore,
             configBackingStore,
             advertisedUrl.toString());
-    final Connect connect = new Connect(herder, rest);
 
+    // Initialize HerderStatusMonitor
     boolean autoStartTasks = mirusConfig.getTaskAutoRestart();
     boolean autoStartConnectors = mirusConfig.getConnectorAutoRestart();
     long pollingCycle = mirusConfig.getTaskStatePollingInterval();
@@ -165,15 +190,22 @@ public class Mirus {
             herder, workerId, pollingCycle, autoStartTasks, autoStartConnectors);
     Thread herderStatusMonitorThread = new Thread(herderStatusMonitor);
     herderStatusMonitorThread.setName("herder-status-monitor");
+
+    final Connect connect = new Connect(herder, rest);
+    log.info("Mirus worker initialization took {}ms", time.hiResClockMs() - initStart);
     try {
       connect.start();
+      // herder has initialized now, and ready to be used by the RestServer.
+      provider.setHerder(herder);
     } catch (Exception e) {
-      logger.error("Failed to start Connect", e);
+      log.error("Failed to start Mirus", e);
       connect.stop();
+      Exit.exit(3);
     }
+
     herderStatusMonitorThread.start();
-    // Shutdown will be triggered by Ctrl-C or via HTTP shutdown request
-    connect.awaitStop();
+
+    return connect;
   }
 
   static class Args {
