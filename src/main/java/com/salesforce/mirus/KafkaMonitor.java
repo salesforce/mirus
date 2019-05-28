@@ -168,8 +168,14 @@ class KafkaMonitor implements Runnable {
   @Override
   public void run() {
     int consecutiveRetriableErrors = 0;
-    try {
-      while (true) {
+    while (true) {
+      try {
+        // Do a fast shutdown check first thing in case we're in an exponential backoff retry loop,
+        // which will never hit the poll wait below
+        if (shutDownLatch.await(0, TimeUnit.MILLISECONDS)) {
+          logger.debug("Exiting KafkaMonitor");
+          return;
+        }
         if (this.topicPartitionList == null) {
           // Need to initialize here to prevent the constructor hanging on startup if the
           // source cluster is unavailable.
@@ -186,19 +192,21 @@ class KafkaMonitor implements Runnable {
           return;
         }
         consecutiveRetriableErrors = 0;
+      } catch (WakeupException | InterruptedException e) {
+        // Assume we've been woken or interrupted to shutdown, so continue on to checking the
+        // shutDownLatch next iteration.
+        logger.debug("KafkaMonitor woken up, checking if shutdown requested...");
+      } catch (RetriableException e) {
+        consecutiveRetriableErrors += 1;
+        logger.warn(
+            "Retriable exception encountered ({} consecutive), continuing processing...",
+            consecutiveRetriableErrors,
+            e);
+        exponentialBackoffWait(consecutiveRetriableErrors);
+      } catch (Exception e) {
+        logger.error("Raising exception to connect runtime", e);
+        context.raiseError(e);
       }
-    } catch (WakeupException e) {
-      logger.debug("Waking up KafkaMonitor for exit");
-    } catch (RetriableException e) {
-      consecutiveRetriableErrors += 1;
-      logger.warn(
-          "Retriable exception encountered ({} consecutive), continuing processing...",
-          consecutiveRetriableErrors,
-          e);
-      exponentialBackoffWait(consecutiveRetriableErrors);
-    } catch (Exception e) {
-      logger.error("Raising exception to connect runtime", e);
-      context.raiseError(e);
     }
   }
 
@@ -340,9 +348,9 @@ class KafkaMonitor implements Runnable {
 
   void stop() {
     missingPartsJmxReporter.recordMetric(0);
+    shutDownLatch.countDown();
     sourceConsumer.wakeup();
     destinationConsumer.wakeup();
-    shutDownLatch.countDown();
     synchronized (sourceConsumer) {
       sourceConsumer.close();
     }
