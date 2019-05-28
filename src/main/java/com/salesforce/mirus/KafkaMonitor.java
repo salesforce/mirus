@@ -204,8 +204,7 @@ class KafkaMonitor implements Runnable {
 
   private void exponentialBackoffWait(int numErrors) {
     int secondsToWait =
-        BACKOFF_WAIT_SECONDS[
-            numErrors < BACKOFF_WAIT_SECONDS.length ? numErrors : BACKOFF_WAIT_SECONDS.length - 1];
+        BACKOFF_WAIT_SECONDS[Math.min(Math.max(numErrors - 1, 0), BACKOFF_WAIT_SECONDS.length - 1)];
     if (secondsToWait > 0) {
       try {
         TimeUnit.SECONDS.sleep(secondsToWait);
