@@ -20,16 +20,20 @@ import com.salesforce.mirus.config.SourceConfig;
 import com.salesforce.mirus.config.SourceConfigDefinition;
 import com.salesforce.mirus.config.TaskConfig;
 import com.salesforce.mirus.config.TaskConfigDefinition;
+import java.lang.Thread.State;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.apache.kafka.clients.consumer.MockConsumer;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.TimeoutException;
 import org.apache.kafka.connect.connector.ConnectorContext;
 import org.junit.Before;
 import org.junit.Test;
@@ -251,5 +255,42 @@ public class KafkaMonitorTest {
             new TopicPartition("topic3", 0),
             new TopicPartition("topic4", 0),
             new TopicPartition("topic5", 0)));
+  }
+
+  @Test
+  public void shouldContinueRunningWhenExceptionEncountered() throws InterruptedException {
+    Map<String, String> properties = getBaseProperties();
+    SourceConfig config = new SourceConfig(properties);
+    TaskConfigBuilder taskConfigBuilder =
+        new TaskConfigBuilder(new RoundRobinTaskAssignor(), config);
+
+    // Require two thrown exceptions to ensure that the KafkaMonitor run loop executes more than
+    // once
+    CountDownLatch exceptionThrownLatch = new CountDownLatch(2);
+    MockConsumer<byte[], byte[]> consumer =
+        new MockConsumer<byte[], byte[]>(OffsetResetStrategy.EARLIEST) {
+          @Override
+          public Map<String, List<PartitionInfo>> listTopics() {
+            exceptionThrownLatch.countDown();
+            throw new TimeoutException("KABOOM!");
+          }
+        };
+
+    kafkaMonitor =
+        new KafkaMonitor(
+            mock(ConnectorContext.class),
+            config,
+            consumer,
+            mockDestinationConsumer,
+            taskConfigBuilder);
+    Thread monitorThread = new Thread(kafkaMonitor);
+    monitorThread.start();
+    exceptionThrownLatch.await(2, TimeUnit.SECONDS);
+    monitorThread.join(1);
+
+    assertThat(monitorThread.getState(), not(State.TERMINATED));
+    kafkaMonitor.stop();
+    monitorThread.interrupt();
+    monitorThread.join(5000);
   }
 }
