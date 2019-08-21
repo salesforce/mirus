@@ -1,7 +1,7 @@
 # On Travis set: SONATYPE_USERNAME, SONATYPE_PASSWORD, GPG_NAME, GPG_EMAIL
 
 language: java
-jdk: oraclejdk8
+jdk: openjdk8
 
 cache:
   directories:
