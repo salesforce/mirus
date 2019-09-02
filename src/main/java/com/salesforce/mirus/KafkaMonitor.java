@@ -155,7 +155,7 @@ class KafkaMonitor implements Runnable {
   }
 
   private static Consumer<byte[], byte[]> newDestinationConsumer(SourceConfig config) {
-    Map<String, Object> consumerProperties = config.getConsumerProperties();
+    Map<String, Object> consumerProperties = config.getDestinationProperties();
 
     // The "monitor2" client id suffix is used to keep JMX bean names distinct
     consumerProperties.computeIfPresent(
