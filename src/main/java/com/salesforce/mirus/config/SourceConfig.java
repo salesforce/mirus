@@ -43,6 +43,10 @@ public class SourceConfig {
     return simpleConfig.originalsWithPrefix("consumer.");
   }
 
+  public Map<String, Object> getDestinationProperties() {
+    return simpleConfig.originalsWithPrefix("producer.");
+  }
+
   public String getDestinationBootstrapServers() {
     return simpleConfig.getString(SourceConfigDefinition.DESTINATION_BOOTSTRAP_SERVERS.key);
   }
