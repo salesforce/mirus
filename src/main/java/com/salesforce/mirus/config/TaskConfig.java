@@ -78,8 +78,11 @@ public class TaskConfig {
 
     SimpleConfig config = new SimpleConfig(TaskConfigDefinition.configDef(), conf);
 
-    return config.getConfiguredInstance(
-        SourceConfigDefinition.SOURCE_KEY_CONVERTER.key, Converter.class);
+    Converter converter = config.getConfiguredInstance(
+            SourceConfigDefinition.SOURCE_KEY_CONVERTER.key, Converter.class);
+    converter.configure(
+            config.originalsWithPrefix(SourceConfigDefinition.SOURCE_KEY_CONVERTER.key + "."),true);
+    return converter;
   }
 
   public Converter getValueConverter() {
@@ -88,8 +91,11 @@ public class TaskConfig {
 
     SimpleConfig config = new SimpleConfig(TaskConfigDefinition.configDef(), conf);
 
-    return config.getConfiguredInstance(
-        SourceConfigDefinition.SOURCE_VALUE_CONVERTER.key, Converter.class);
+    Converter converter = config.getConfiguredInstance(
+            SourceConfigDefinition.SOURCE_VALUE_CONVERTER.key, Converter.class);
+    converter.configure(
+            config.originalsWithPrefix(SourceConfigDefinition.SOURCE_VALUE_CONVERTER.key + "."),false);
+    return converter;
   }
 
   public HeaderConverter getHeaderConverter() {
@@ -98,7 +104,10 @@ public class TaskConfig {
 
     SimpleConfig config = new SimpleConfig(TaskConfigDefinition.configDef(), conf);
 
-    return config.getConfiguredInstance(
-        SourceConfigDefinition.SOURCE_HEADER_CONVERTER.key, HeaderConverter.class);
+    HeaderConverter headerConverter = config.getConfiguredInstance(
+            SourceConfigDefinition.SOURCE_HEADER_CONVERTER.key, HeaderConverter.class);
+    headerConverter.configure(
+            config.originalsWithPrefix(SourceConfigDefinition.SOURCE_HEADER_CONVERTER.key + "."));
+    return headerConverter;
   }
 }
