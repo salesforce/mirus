@@ -74,6 +74,7 @@ public class TaskConfig {
 
   public Converter getKeyConverter() {
     Map<String, Object> conf = simpleConfig.originals();
+    conf.put(StringConverterConfig.TYPE_CONFIG, ConverterType.KEY.getName());
     conf.putAll(simpleConfig.originalsWithPrefix(SourceConfigDefinition.SOURCE_KEY_CONVERTER.key + "."));
 
     Converter converter = simpleConfig.getConfiguredInstance(
@@ -84,6 +85,7 @@ public class TaskConfig {
 
   public Converter getValueConverter() {
     Map<String, Object> conf = simpleConfig.originals();
+    conf.put(StringConverterConfig.TYPE_CONFIG, ConverterType.VALUE.getName());
     conf.putAll(simpleConfig.originalsWithPrefix(SourceConfigDefinition.SOURCE_VALUE_CONVERTER.key + "."));
 
     Converter converter = simpleConfig.getConfiguredInstance(
