@@ -103,7 +103,10 @@ public class MirusSourceTask extends SourceTask {
     this.valueConverter = config.getValueConverter();
     this.headerConverter = config.getHeaderConverter();
 
-    logger.debug("Task starting with partitions: {}", config.getInternalTaskPartitions());
+    logger.info(
+        "Starting task: (task id: {} partitions: {})",
+        config.getTaskId(),
+        config.getInternalTaskPartitions());
 
     this.consumer = consumerFactory.newConsumer(consumerProperties);
     List<TopicPartition> partitionIds =

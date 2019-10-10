@@ -101,4 +101,8 @@ public class TaskConfig {
     return config.getConfiguredInstance(
         SourceConfigDefinition.SOURCE_HEADER_CONVERTER.key, HeaderConverter.class);
   }
+
+  public String getTaskId() {
+    return simpleConfig.getString(TaskConfigDefinition.TASK_ID);
+  }
 }

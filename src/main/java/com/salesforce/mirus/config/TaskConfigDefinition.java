@@ -16,6 +16,7 @@ public class TaskConfigDefinition {
 
   public static final String PARTITION_LIST = "partitions";
   public static final String CONSUMER_CLIENT_ID = "consumer.client.id";
+  public static final String TASK_ID = "task.id";
   /** List of config definitions to inherit from SourceConfig */
   private static final List<SourceConfigDefinition> SOURCE_CONFIG_DEFINITION_LIST =
       Arrays.asList(
@@ -45,6 +46,12 @@ public class TaskConfigDefinition {
         "",
         ConfigDef.Importance.HIGH,
         "Client ID used to uniquely identify the consumer in this task");
+    configDef.define(
+        TASK_ID,
+        ConfigDef.Type.STRING,
+        "",
+        ConfigDef.Importance.HIGH,
+        "Task ID used to uniquely identify the task");
     return configDef;
   }
 }
