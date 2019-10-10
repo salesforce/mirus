@@ -77,10 +77,10 @@ public class TaskConfig {
     conf.put(StringConverterConfig.TYPE_CONFIG, ConverterType.KEY.getName());
     conf.putAll(simpleConfig.originalsWithPrefix(SourceConfigDefinition.SOURCE_KEY_CONVERTER.key + "."));
 
-    Converter converter = simpleConfig.getConfiguredInstance(
-            SourceConfigDefinition.SOURCE_KEY_CONVERTER.key, Converter.class);
-    converter.configure(conf,true);
-    return converter;
+    SimpleConfig config = new SimpleConfig(TaskConfigDefinition.configDef(), conf);
+
+    return config.getConfiguredInstance(
+        SourceConfigDefinition.SOURCE_KEY_CONVERTER.key, Converter.class);
   }
 
   public Converter getValueConverter() {
@@ -88,10 +88,10 @@ public class TaskConfig {
     conf.put(StringConverterConfig.TYPE_CONFIG, ConverterType.VALUE.getName());
     conf.putAll(simpleConfig.originalsWithPrefix(SourceConfigDefinition.SOURCE_VALUE_CONVERTER.key + "."));
 
-    Converter converter = simpleConfig.getConfiguredInstance(
-            SourceConfigDefinition.SOURCE_VALUE_CONVERTER.key, Converter.class);
-    converter.configure(conf,false);
-    return converter;
+    SimpleConfig config = new SimpleConfig(TaskConfigDefinition.configDef(), conf);
+
+    return config.getConfiguredInstance(
+        SourceConfigDefinition.SOURCE_VALUE_CONVERTER.key, Converter.class);
   }
 
   public HeaderConverter getHeaderConverter() {
@@ -99,9 +99,9 @@ public class TaskConfig {
     conf.put(StringConverterConfig.TYPE_CONFIG, ConverterType.HEADER.getName());
     conf.putAll(simpleConfig.originalsWithPrefix(SourceConfigDefinition.SOURCE_HEADER_CONVERTER.key + "."));
 
-    HeaderConverter headerConverter = simpleConfig.getConfiguredInstance(
-            SourceConfigDefinition.SOURCE_HEADER_CONVERTER.key, HeaderConverter.class);
-    headerConverter.configure(conf);
-    return headerConverter;
+    SimpleConfig config = new SimpleConfig(TaskConfigDefinition.configDef(), conf);
+
+    return config.getConfiguredInstance(
+        SourceConfigDefinition.SOURCE_HEADER_CONVERTER.key, HeaderConverter.class);
   }
 }
