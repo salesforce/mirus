@@ -74,40 +74,32 @@ public class TaskConfig {
 
   public Converter getKeyConverter() {
     Map<String, Object> conf = simpleConfig.originals();
-    conf.put(StringConverterConfig.TYPE_CONFIG, ConverterType.KEY.getName());
+    conf.putAll(simpleConfig.originalsWithPrefix(SourceConfigDefinition.SOURCE_KEY_CONVERTER.key + "."));
 
-    SimpleConfig config = new SimpleConfig(TaskConfigDefinition.configDef(), conf);
-
-    Converter converter = config.getConfiguredInstance(
+    Converter converter = simpleConfig.getConfiguredInstance(
             SourceConfigDefinition.SOURCE_KEY_CONVERTER.key, Converter.class);
-    converter.configure(
-            config.originalsWithPrefix(SourceConfigDefinition.SOURCE_KEY_CONVERTER.key + "."),true);
+    converter.configure(conf,true);
     return converter;
   }
 
   public Converter getValueConverter() {
     Map<String, Object> conf = simpleConfig.originals();
-    conf.put(StringConverterConfig.TYPE_CONFIG, ConverterType.VALUE.getName());
+    conf.putAll(simpleConfig.originalsWithPrefix(SourceConfigDefinition.SOURCE_VALUE_CONVERTER.key + "."));
 
-    SimpleConfig config = new SimpleConfig(TaskConfigDefinition.configDef(), conf);
-
-    Converter converter = config.getConfiguredInstance(
+    Converter converter = simpleConfig.getConfiguredInstance(
             SourceConfigDefinition.SOURCE_VALUE_CONVERTER.key, Converter.class);
-    converter.configure(
-            config.originalsWithPrefix(SourceConfigDefinition.SOURCE_VALUE_CONVERTER.key + "."),false);
+    converter.configure(conf,false);
     return converter;
   }
 
   public HeaderConverter getHeaderConverter() {
     Map<String, Object> conf = simpleConfig.originals();
     conf.put(StringConverterConfig.TYPE_CONFIG, ConverterType.HEADER.getName());
+    conf.putAll(simpleConfig.originalsWithPrefix(SourceConfigDefinition.SOURCE_HEADER_CONVERTER.key + "."));
 
-    SimpleConfig config = new SimpleConfig(TaskConfigDefinition.configDef(), conf);
-
-    HeaderConverter headerConverter = config.getConfiguredInstance(
+    HeaderConverter headerConverter = simpleConfig.getConfiguredInstance(
             SourceConfigDefinition.SOURCE_HEADER_CONVERTER.key, HeaderConverter.class);
-    headerConverter.configure(
-            config.originalsWithPrefix(SourceConfigDefinition.SOURCE_HEADER_CONVERTER.key + "."));
+    headerConverter.configure(conf);
     return headerConverter;
   }
 }
