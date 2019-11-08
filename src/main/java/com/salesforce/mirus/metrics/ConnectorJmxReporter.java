@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.kafka.common.MetricName;
+import org.apache.kafka.common.metrics.Metrics;
 import org.apache.kafka.common.metrics.stats.Total;
 import org.apache.kafka.common.metrics.stats.Value;
 import org.apache.kafka.common.utils.Time;
@@ -39,7 +40,11 @@ public class ConnectorJmxReporter extends AbstractMirusJmxReporter {
   private final Map<String, String> allStates = new HashMap<>();
 
   public ConnectorJmxReporter() {
+    this(new Metrics());
+  }
 
+  ConnectorJmxReporter(Metrics metrics) {
+    super(metrics);
     allStates.put("RUNNING", "running");
     allStates.put("FAILED", "failed");
     allStates.put("DESTROYED", "destroyed");

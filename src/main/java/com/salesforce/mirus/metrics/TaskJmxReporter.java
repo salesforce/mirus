@@ -13,6 +13,7 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import org.apache.kafka.common.MetricName;
+import org.apache.kafka.common.metrics.Metrics;
 import org.apache.kafka.common.metrics.Sensor;
 import org.apache.kafka.common.metrics.stats.Total;
 import org.apache.kafka.common.utils.Time;
@@ -36,7 +37,11 @@ public class TaskJmxReporter extends AbstractMirusJmxReporter {
   private final Set<String> taskLevelJmxTags = new LinkedHashSet<>();
 
   public TaskJmxReporter() {
+    this(new Metrics());
+  }
 
+  public TaskJmxReporter(Metrics metrics) {
+    super(metrics);
     // Order of additions is important since it defines the JMX metric hierarchy.
     taskLevelJmxTags.add(CONNECTOR_KEY);
     taskLevelJmxTags.add(TASK_KEY);
