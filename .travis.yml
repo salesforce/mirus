@@ -11,7 +11,10 @@ before_install: source .travis.gpg.sh
 
 install: mvn install --settings .travis.settings.xml -DskipTests=true -Dmaven.javadoc.skip=true -B -V
 
-script: mvn test --settings .travis.settings.xml -B
+script: mvn verify --settings .travis.settings.xml -B
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
 
 deploy:
   provider: script
