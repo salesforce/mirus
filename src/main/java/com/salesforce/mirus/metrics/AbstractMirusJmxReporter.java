@@ -22,10 +22,9 @@ abstract class AbstractMirusJmxReporter {
 
   final Metrics metrics;
 
-  public AbstractMirusJmxReporter() {
-    Metrics metrics = new Metrics();
-    metrics.addReporter(new JmxReporter("mirus"));
+  AbstractMirusJmxReporter(Metrics metrics) {
     this.metrics = metrics;
+    this.metrics.addReporter(new JmxReporter("mirus"));
   }
 
   protected MetricName getMetric(
