@@ -11,6 +11,7 @@
 
     <properties>
         <dist.dir>${project.build.directory}/dist</dist.dir>
+        <jackson.version>2.10.0</jackson.version>
         <java.numeric.version>1.8</java.numeric.version>
         <kafka.version>2.3.1</kafka.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -25,7 +26,7 @@
         <dependency>
             <groupId>com.fasterxml.jackson.dataformat</groupId>
             <artifactId>jackson-dataformat-csv</artifactId>
-            <version>2.9.4</version>
+            <version>${jackson.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.kafka</groupId>
