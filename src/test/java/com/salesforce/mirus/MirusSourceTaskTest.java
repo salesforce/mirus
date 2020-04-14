@@ -219,7 +219,8 @@ public class MirusSourceTaskTest {
     Map<TopicPartition, List<ConsumerRecord<byte[], byte[]>>> records = new HashMap<>();
     records.put(
         new TopicPartition(topic, partition),
-        Collections.singletonList(newConsumerRecord(topic, partition, offset, timestamp, null)));
+        Collections.singletonList(
+            newConsumerRecord(topic, partition, offset, timestamp, new RecordHeaders())));
     ConsumerRecords<byte[], byte[]> pollResult = new ConsumerRecords<>(records);
 
     List<SourceRecord> result = mirusSourceTask.sourceRecords(pollResult);

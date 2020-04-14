@@ -26,8 +26,8 @@ import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.common.utils.Exit;
 import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.common.utils.Utils;
+import org.apache.kafka.connect.connector.policy.ConnectorClientConfigOverridePolicy;
 import org.apache.kafka.connect.runtime.Connect;
-import org.apache.kafka.connect.runtime.HerderProvider;
 import org.apache.kafka.connect.runtime.Worker;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.runtime.WorkerConfigTransformer;
@@ -148,8 +148,7 @@ public class Mirus {
     log.debug("Kafka cluster ID: {}", kafkaClusterId);
 
     RestServer rest = new RestServer(configWithClientIdSuffix(workerProps, "rest"));
-    HerderProvider provider = new HerderProvider();
-    rest.start(provider, plugins);
+    rest.initializeServer();
 
     URI advertisedUrl = rest.advertisedUrl();
     String workerId = advertisedUrl.getHost() + ":" + advertisedUrl.getPort();
@@ -158,7 +157,22 @@ public class Mirus {
     offsetBackingStore.configure(configWithClientIdSuffix(workerProps, "offset"));
 
     WorkerConfig workerConfigs = configWithClientIdSuffix(workerProps, "worker");
-    Worker worker = new Worker(workerId, time, plugins, workerConfigs, offsetBackingStore);
+
+    ConnectorClientConfigOverridePolicy connectorClientConfigOverridePolicy =
+        plugins.newPlugin(
+            distributedConfig.getString(WorkerConfig.CONNECTOR_CLIENT_POLICY_CLASS_CONFIG),
+            workerConfigs,
+            ConnectorClientConfigOverridePolicy.class);
+
+    Worker worker =
+        new Worker(
+            workerId,
+            time,
+            plugins,
+            workerConfigs,
+            offsetBackingStore,
+            connectorClientConfigOverridePolicy);
+
     WorkerConfigTransformer configTransformer = worker.configTransformer();
 
     Converter internalValueConverter = worker.getInternalValueConverter();
@@ -180,7 +194,8 @@ public class Mirus {
             kafkaClusterId,
             statusBackingStore,
             configBackingStore,
-            advertisedUrl.toString());
+            advertisedUrl.toString(),
+            connectorClientConfigOverridePolicy);
 
     // Initialize HerderStatusMonitor
     boolean autoStartTasks = mirusConfig.getTaskAutoRestart();
@@ -196,8 +211,6 @@ public class Mirus {
     log.info("Mirus worker initialization took {}ms", time.hiResClockMs() - initStart);
     try {
       connect.start();
-      // herder has initialized now, and ready to be used by the RestServer.
-      provider.setHerder(herder);
     } catch (Exception e) {
       log.error("Failed to start Mirus", e);
       connect.stop();
