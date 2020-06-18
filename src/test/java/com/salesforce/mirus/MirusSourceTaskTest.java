@@ -8,7 +8,9 @@
 
 package com.salesforce.mirus;
 
-import static org.hamcrest.CoreMatchers.*;
+import static org.hamcrest.CoreMatchers.hasItems;
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
 
@@ -264,4 +266,65 @@ public class MirusSourceTaskTest {
     assertThat(sourceRecord.valueSchema().type(), is(Schema.Type.STRUCT));
     assertThat(sourceRecord.timestamp(), is(-1L)); // Since the source record has no timestamp
   }
+
+  @Test
+  public void testReplayFilterOnePartition() {
+
+    mockConsumer.updateBeginningOffsets(Collections.singletonMap(new TopicPartition(TOPIC, 0), 0L));
+
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 0, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 1, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 2, new byte[] {}, new byte[] {}));
+    List<SourceRecord> result = mirusSourceTask.poll();
+    assertThat(result.size(), is(3));
+
+    // Simulate an offset reset
+    mockConsumer.seekToBeginning(Collections.singletonList(new TopicPartition(TOPIC, 0)));
+
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 0, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 1, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 2, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 3, new byte[] {}, new byte[] {}));
+    result = mirusSourceTask.poll();
+
+    assertThat(result.size(), is(1));
+    assertThat( result.get(0).sourceOffset().get(MirusSourceTask.KEY_OFFSET), is(4L));
+
+  }
+
+  @Test
+  public void testReplayFilterTwoPartitions() {
+
+    Map<TopicPartition, Long> initialOffsets = new HashMap();
+    initialOffsets.put(new TopicPartition(TOPIC, 0), 0L);
+    initialOffsets.put(new TopicPartition(TOPIC, 1), 0L);
+
+    mockConsumer.updateBeginningOffsets(initialOffsets);
+
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 0, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 1, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 2, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 1, 0, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 1, 1, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 1, 2, new byte[] {}, new byte[] {}));
+    List<SourceRecord> result = mirusSourceTask.poll();
+    assertThat(result.size(), is(6));
+
+    // Simulate an offset reset on ONE partition
+    mockConsumer.seekToBeginning(Collections.singletonList(new TopicPartition(TOPIC, 0)));
+
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 0, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 1, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 2, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 3, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 1, 3, new byte[] {}, new byte[] {}));
+    result = mirusSourceTask.poll();
+
+    assertThat(result.size(), is(2));
+    assertThat( result.get(0).sourceOffset().get(MirusSourceTask.KEY_OFFSET), is(4L));
+    assertThat( result.get(1).sourceOffset().get(MirusSourceTask.KEY_OFFSET), is(4L));
+
+  }
+
+
 }
