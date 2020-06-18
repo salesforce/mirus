@@ -197,7 +197,7 @@ public class MirusSourceTask extends SourceTask {
           Long sourceOffset = consumerRecord.offset();
           Long latestOffset = latestOffsetMap.get(sourceRecord.sourcePartition());
 
-          // Skip records at have already been seen by this task
+          // Skip any record that has already been handled by this task
           if (latestOffset == null || sourceOffset > latestOffset ) {
             sourceRecords.add(sourceRecord);
             latestOffsetMap.put(sourceRecord.sourcePartition(), sourceOffset);
