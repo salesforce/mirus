@@ -42,26 +42,25 @@ public class TaskConfigDefinition {
         ConfigDef.Type.STRING,
         "",
         ConfigDef.Importance.HIGH,
-        "The list of partitions for this task to handle");
+        "The list of partitions for this task to handle.");
     configDef.define(
         CONSUMER_CLIENT_ID,
         ConfigDef.Type.STRING,
         "",
         ConfigDef.Importance.HIGH,
-        "Client ID used to uniquely identify the consumer in this task");
+        "Client ID used to uniquely identify the consumer in this task.");
     configDef.define(
         REPLAY_POLICY,
         ConfigDef.Type.STRING,
         ReplayPolicy.IGNORE.toString(),
         ConfigDef.Importance.LOW,
-        "Policy for handling bursts of duplicate records caused by offset resets."
-            + " Allowed values: IGNORE, FILTER");
+        "Policy for handling bursts of duplicate records caused by offset resets. Allowed values: IGNORE, FILTER.");
     configDef.define(
         REPLAY_WINDOW_RECORDS,
         ConfigDef.Type.LONG,
         50000,
         ConfigDef.Importance.LOW,
-        "Maximum duplicate records allowed per partition when an offset " + "reset is detected");
+        "Maximum duplicate records allowed per partition when an offset reset is detected.");
 
     return configDef;
   }
