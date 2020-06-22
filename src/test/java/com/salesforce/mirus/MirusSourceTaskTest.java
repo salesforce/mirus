@@ -15,6 +15,7 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
 
 import com.salesforce.mirus.config.SourceConfigDefinition;
+import com.salesforce.mirus.config.TaskConfig.ReplayPolicy;
 import com.salesforce.mirus.config.TaskConfigDefinition;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -97,6 +98,8 @@ public class MirusSourceTaskTest {
     topicPartitionList.add(new TopicPartition(TOPIC, 1));
     properties.put(
         TaskConfigDefinition.PARTITION_LIST, TopicPartitionSerDe.toJson(topicPartitionList));
+    properties.put(TaskConfigDefinition.REPLAY_POLICY, ReplayPolicy.FILTER.toString());
+    properties.put(TaskConfigDefinition.REPLAY_WINDOW_RECORDS, "0");
     return properties;
   }
 
@@ -288,14 +291,13 @@ public class MirusSourceTaskTest {
     result = mirusSourceTask.poll();
 
     assertThat(result.size(), is(1));
-    assertThat( result.get(0).sourceOffset().get(MirusSourceTask.KEY_OFFSET), is(4L));
-
+    assertThat(result.get(0).sourceOffset().get(MirusSourceTask.KEY_OFFSET), is(4L));
   }
 
   @Test
   public void testReplayFilterTwoPartitions() {
 
-    Map<TopicPartition, Long> initialOffsets = new HashMap();
+    Map<TopicPartition, Long> initialOffsets = new HashMap<>();
     initialOffsets.put(new TopicPartition(TOPIC, 0), 0L);
     initialOffsets.put(new TopicPartition(TOPIC, 1), 0L);
 
@@ -321,10 +323,35 @@ public class MirusSourceTaskTest {
     result = mirusSourceTask.poll();
 
     assertThat(result.size(), is(2));
-    assertThat( result.get(0).sourceOffset().get(MirusSourceTask.KEY_OFFSET), is(4L));
-    assertThat( result.get(1).sourceOffset().get(MirusSourceTask.KEY_OFFSET), is(4L));
-
+    assertThat(result.get(0).sourceOffset().get(MirusSourceTask.KEY_OFFSET), is(4L));
+    assertThat(result.get(1).sourceOffset().get(MirusSourceTask.KEY_OFFSET), is(4L));
   }
 
+  @Test
+  public void testReplayFilterWindow() {
 
+    Map<String, String> properties = mockTaskProperties();
+    properties.put(TaskConfigDefinition.REPLAY_WINDOW_RECORDS, "2");
+    mirusSourceTask.start(properties);
+
+    mockConsumer.updateBeginningOffsets(Collections.singletonMap(new TopicPartition(TOPIC, 0), 0L));
+
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 0, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 1, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 2, new byte[] {}, new byte[] {}));
+    List<SourceRecord> result = mirusSourceTask.poll();
+    assertThat(result.size(), is(3));
+
+    // Simulate an offset reset
+    mockConsumer.seekToBeginning(Collections.singletonList(new TopicPartition(TOPIC, 0)));
+
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 0, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 1, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 2, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 3, new byte[] {}, new byte[] {}));
+    result = mirusSourceTask.poll();
+
+    assertThat(result.size(), is(3));
+    assertThat(result.get(0).sourceOffset().get(MirusSourceTask.KEY_OFFSET), is(2L));
+  }
 }

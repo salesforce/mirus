@@ -9,6 +9,7 @@
 package com.salesforce.mirus;
 
 import com.salesforce.mirus.config.TaskConfig;
+import com.salesforce.mirus.config.TaskConfig.ReplayPolicy;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -64,8 +65,10 @@ public class MirusSourceTask extends SourceTask {
   private Converter keyConverter;
   private Converter valueConverter;
   private HeaderConverter headerConverter;
+  private ReplayPolicy replayPolicy;
+  private long replayWindowRecords;
 
-  private final Map<Map<String, ?>, Long> latestOffsetMap = new HashMap<>();
+  private final Map<TopicPartition, Long> latestOffsetMap = new HashMap<>();
 
   protected AtomicBoolean shutDown = new AtomicBoolean(false);
 
@@ -105,6 +108,8 @@ public class MirusSourceTask extends SourceTask {
     this.keyConverter = config.getKeyConverter();
     this.valueConverter = config.getValueConverter();
     this.headerConverter = config.getHeaderConverter();
+    this.replayPolicy = config.getReplayPolicy();
+    this.replayWindowRecords = config.getReplayWindowRecords();
 
     logger.debug("Task starting with partitions: {}", config.getInternalTaskPartitions());
 
@@ -193,17 +198,27 @@ public class MirusSourceTask extends SourceTask {
     List<SourceRecord> sourceRecords = new ArrayList<>(pollResult.count());
     pollResult.forEach(
         consumerRecord -> {
-          SourceRecord sourceRecord = toSourceRecord(consumerRecord);
-          Long sourceOffset = consumerRecord.offset();
-          Long latestOffset = latestOffsetMap.get(sourceRecord.sourcePartition());
-
-          // Skip any record that has already been handled by this task
-          if (latestOffset == null || sourceOffset > latestOffset ) {
-            sourceRecords.add(sourceRecord);
-            latestOffsetMap.put(sourceRecord.sourcePartition(), sourceOffset);
+          if (!isSkippedRecord(consumerRecord)) {
+            sourceRecords.add(toSourceRecord(consumerRecord));
           }
         });
     return sourceRecords;
+  }
+
+  private boolean isSkippedRecord(ConsumerRecord<byte[], byte[]> consumerRecord) {
+    if (replayPolicy == ReplayPolicy.FILTER) {
+      TopicPartition topicPartition =
+          new TopicPartition(consumerRecord.topic(), consumerRecord.partition());
+      long sourceOffset = consumerRecord.offset();
+      Long latestOffset = latestOffsetMap.get(topicPartition);
+      // Skip any record that has already been handled by this task
+      if (latestOffset != null && sourceOffset <= (latestOffset - replayWindowRecords)) {
+        return true;
+      } else {
+        latestOffsetMap.put(topicPartition, sourceOffset);
+      }
+    }
+    return false;
   }
 
   private SourceRecord toSourceRecord(ConsumerRecord<byte[], byte[]> consumerRecord) {
