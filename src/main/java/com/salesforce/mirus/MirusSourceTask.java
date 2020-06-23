@@ -9,9 +9,11 @@
 package com.salesforce.mirus;
 
 import com.salesforce.mirus.config.TaskConfig;
+import com.salesforce.mirus.config.TaskConfig.ReplayPolicy;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -49,7 +51,7 @@ public class MirusSourceTask extends SourceTask {
 
   private static final Logger logger = LoggerFactory.getLogger(MirusSourceTask.class);
 
-  private static final String KEY_OFFSET = "offset";
+  static final String KEY_OFFSET = "offset";
 
   private final ConsumerFactory consumerFactory;
 
@@ -63,6 +65,10 @@ public class MirusSourceTask extends SourceTask {
   private Converter keyConverter;
   private Converter valueConverter;
   private HeaderConverter headerConverter;
+  private ReplayPolicy replayPolicy;
+  private long replayWindowRecords;
+
+  private final Map<TopicPartition, Long> latestOffsetMap = new HashMap<>();
 
   protected AtomicBoolean shutDown = new AtomicBoolean(false);
 
@@ -102,6 +108,8 @@ public class MirusSourceTask extends SourceTask {
     this.keyConverter = config.getKeyConverter();
     this.valueConverter = config.getValueConverter();
     this.headerConverter = config.getHeaderConverter();
+    this.replayPolicy = config.getReplayPolicy();
+    this.replayWindowRecords = config.getReplayWindowRecords();
 
     logger.debug("Task starting with partitions: {}", config.getInternalTaskPartitions());
 
@@ -188,8 +196,29 @@ public class MirusSourceTask extends SourceTask {
 
   List<SourceRecord> sourceRecords(ConsumerRecords<byte[], byte[]> pollResult) {
     List<SourceRecord> sourceRecords = new ArrayList<>(pollResult.count());
-    pollResult.forEach(sourceRecord -> sourceRecords.add(toSourceRecord(sourceRecord)));
+    pollResult.forEach(
+        consumerRecord -> {
+          if (!isSkippedRecord(consumerRecord)) {
+            sourceRecords.add(toSourceRecord(consumerRecord));
+          }
+        });
     return sourceRecords;
+  }
+
+  private boolean isSkippedRecord(ConsumerRecord<byte[], byte[]> consumerRecord) {
+    if (replayPolicy == ReplayPolicy.FILTER) {
+      TopicPartition topicPartition =
+          new TopicPartition(consumerRecord.topic(), consumerRecord.partition());
+      long sourceOffset = consumerRecord.offset();
+      Long latestOffset = latestOffsetMap.get(topicPartition);
+      // Skip any record that has already been handled by this task
+      if (latestOffset != null && sourceOffset <= (latestOffset - replayWindowRecords)) {
+        return true;
+      } else {
+        latestOffsetMap.put(topicPartition, sourceOffset);
+      }
+    }
+    return false;
   }
 
   private SourceRecord toSourceRecord(ConsumerRecord<byte[], byte[]> consumerRecord) {

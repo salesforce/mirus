@@ -8,7 +8,9 @@
 
 package com.salesforce.mirus.config;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.ConverterType;
 import org.apache.kafka.connect.storage.HeaderConverter;
@@ -20,6 +22,11 @@ import org.apache.kafka.connect.transforms.util.SimpleConfig;
  * {@link com.salesforce.mirus.MirusSourceTask} instances.
  */
 public class TaskConfig {
+
+  public enum ReplayPolicy {
+    IGNORE,
+    FILTER // Attempt to filter out duplicate records using the replay window
+  }
 
   private final SimpleConfig simpleConfig;
 
@@ -70,6 +77,14 @@ public class TaskConfig {
 
   public boolean getEnablePartitionMatching() {
     return simpleConfig.getBoolean(SourceConfigDefinition.ENABLE_PARTITION_MATCHING.key);
+  }
+
+  public ReplayPolicy getReplayPolicy() {
+    return ReplayPolicy.valueOf(simpleConfig.getString(TaskConfigDefinition.REPLAY_POLICY));
+  }
+
+  public long getReplayWindowRecords() {
+    return simpleConfig.getLong(TaskConfigDefinition.REPLAY_WINDOW_RECORDS);
   }
 
   public Converter getKeyConverter() {
