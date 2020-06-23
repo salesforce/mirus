@@ -52,7 +52,7 @@ public class TaskConfigDefinition {
     configDef.define(
         REPLAY_POLICY,
         ConfigDef.Type.STRING,
-        ReplayPolicy.IGNORE.toString(),
+        ReplayPolicy.FILTER.toString(),
         ConfigDef.Importance.LOW,
         "Policy for handling bursts of duplicate records caused by offset resets. Allowed values: IGNORE, FILTER.");
     configDef.define(
