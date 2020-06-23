@@ -8,6 +8,7 @@
 
 package com.salesforce.mirus.config;
 
+import com.salesforce.mirus.config.TaskConfig.ReplayPolicy;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.kafka.common.config.ConfigDef;
@@ -16,6 +17,9 @@ public class TaskConfigDefinition {
 
   public static final String PARTITION_LIST = "partitions";
   public static final String CONSUMER_CLIENT_ID = "consumer.client.id";
+  public static final String REPLAY_POLICY = "replay.policy";
+  public static final String REPLAY_WINDOW_RECORDS = "replay.window.records";
+
   /** List of config definitions to inherit from SourceConfig */
   private static final List<SourceConfigDefinition> SOURCE_CONFIG_DEFINITION_LIST =
       Arrays.asList(
@@ -38,13 +42,26 @@ public class TaskConfigDefinition {
         ConfigDef.Type.STRING,
         "",
         ConfigDef.Importance.HIGH,
-        "The list of partitions for this task to handle");
+        "The list of partitions for this task to handle.");
     configDef.define(
         CONSUMER_CLIENT_ID,
         ConfigDef.Type.STRING,
         "",
         ConfigDef.Importance.HIGH,
-        "Client ID used to uniquely identify the consumer in this task");
+        "Client ID used to uniquely identify the consumer in this task.");
+    configDef.define(
+        REPLAY_POLICY,
+        ConfigDef.Type.STRING,
+        ReplayPolicy.FILTER.toString(),
+        ConfigDef.Importance.LOW,
+        "Policy for handling bursts of duplicate records caused by offset resets. Allowed values: IGNORE, FILTER.");
+    configDef.define(
+        REPLAY_WINDOW_RECORDS,
+        ConfigDef.Type.LONG,
+        50000,
+        ConfigDef.Importance.LOW,
+        "Maximum duplicate records allowed per partition when an offset reset is detected.");
+
     return configDef;
   }
 }

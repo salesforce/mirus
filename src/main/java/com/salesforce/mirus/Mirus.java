@@ -55,7 +55,8 @@ import org.slf4j.LoggerFactory;
  *   <li>Supports worker property value overrides, in the same format as the Kafka Server, to
  *       simplify configuration
  *   <li>Ensure client.id for internal Kafka clients use unique names by adding suffixes
- *   <li>Initialize the {@link HerderStatusMonitor} for automated task restarts and enhanced monitoring
+ *   <li>Initialize the {@link HerderStatusMonitor} for automated task restarts and enhanced
+ *       monitoring
  * </ul>
  */
 public class Mirus {
