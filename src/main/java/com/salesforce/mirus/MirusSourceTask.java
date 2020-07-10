@@ -170,6 +170,9 @@ public class MirusSourceTask extends SourceTask {
           } else {
             consumer.seek(tp, (Long) offsetMap.get(KEY_OFFSET));
           }
+          if (replayPolicy == ReplayPolicy.FILTER) {
+            latestOffsetMap.put(tp, consumer.position(tp)-1);
+          }
         });
   }
 
