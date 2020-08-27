@@ -8,8 +8,6 @@
 
 package com.salesforce.mirus;
 
-import com.salesforce.mirus.config.TaskConfig;
-import com.salesforce.mirus.config.TaskConfig.ReplayPolicy;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -18,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
+
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -33,6 +32,9 @@ import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.HeaderConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.salesforce.mirus.config.TaskConfig;
+import com.salesforce.mirus.config.TaskConfig.ReplayPolicy;
 
 interface ConsumerFactory {
   Consumer<byte[], byte[]> newConsumer(Map<String, Object> consumerProperties);
@@ -198,7 +200,7 @@ public class MirusSourceTask extends SourceTask {
     List<SourceRecord> sourceRecords = new ArrayList<>(pollResult.count());
     pollResult.forEach(
         consumerRecord -> {
-          if (!isSkippedRecord(consumerRecord)) {
+          if (replayPolicy == ReplayPolicy.FILTER && !isSkippedRecord(consumerRecord)) {
             sourceRecords.add(toSourceRecord(consumerRecord));
           }
         });

@@ -8,10 +8,12 @@
 
 package com.salesforce.mirus.config;
 
-import com.salesforce.mirus.config.TaskConfig.ReplayPolicy;
 import java.util.Arrays;
 import java.util.List;
+
 import org.apache.kafka.common.config.ConfigDef;
+
+import com.salesforce.mirus.config.TaskConfig.ReplayPolicy;
 
 public class TaskConfigDefinition {
 
@@ -52,7 +54,7 @@ public class TaskConfigDefinition {
     configDef.define(
         REPLAY_POLICY,
         ConfigDef.Type.STRING,
-        ReplayPolicy.FILTER.toString(),
+        ReplayPolicy.IGNORE.toString(),
         ConfigDef.Importance.LOW,
         "Policy for handling bursts of duplicate records caused by offset resets. Allowed values: IGNORE, FILTER.");
     configDef.define(
