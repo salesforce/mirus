@@ -12,8 +12,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -71,6 +73,7 @@ public class MirusSourceTask extends SourceTask {
   private long replayWindowRecords;
 
   private final Map<TopicPartition, Long> latestOffsetMap = new HashMap<>();
+  private final Set<TopicPartition> loggingFlags = new HashSet<>();
 
   protected AtomicBoolean shutDown = new AtomicBoolean(false);
 
@@ -208,19 +211,27 @@ public class MirusSourceTask extends SourceTask {
   }
 
   private boolean isSkippedRecord(ConsumerRecord<byte[], byte[]> consumerRecord) {
-    if (replayPolicy == ReplayPolicy.FILTER) {
-      TopicPartition topicPartition =
-          new TopicPartition(consumerRecord.topic(), consumerRecord.partition());
-      long sourceOffset = consumerRecord.offset();
-      Long latestOffset = latestOffsetMap.get(topicPartition);
-      // Skip any record that has already been handled by this task
-      if (latestOffset != null && sourceOffset <= (latestOffset - replayWindowRecords)) {
-        return true;
-      } else {
-        latestOffsetMap.put(topicPartition, sourceOffset);
-      }
+    TopicPartition topicPartition = new TopicPartition(consumerRecord.topic(), consumerRecord.partition());
+    long sourceOffset = consumerRecord.offset();
+    Long latestOffset = latestOffsetMap.get(topicPartition);
+    // Skip any record that has already been handled by this task
+    if (latestOffset != null && sourceOffset <= (latestOffset - replayWindowRecords)) {
+      maybeLogSkippedRecord(topicPartition, sourceOffset, latestOffset);
+      return true;
+    } else {
+      latestOffsetMap.put(topicPartition, sourceOffset);
     }
     return false;
+  }
+
+  private void maybeLogSkippedRecord(TopicPartition topicPartition, long sourceOffset, long latestOffset) {
+    if(!loggingFlags.contains(topicPartition)) {
+      logger.info("Skipping record with topic-partition={}, offset={}. Latest previously recorded offset={}. "
+        + "This log statement is recorded once per task instance per topic-partition.",
+        topicPartition, sourceOffset, latestOffset);
+      loggingFlags.add(topicPartition);
+    }
+
   }
 
   private SourceRecord toSourceRecord(ConsumerRecord<byte[], byte[]> consumerRecord) {
