@@ -8,14 +8,17 @@
 
 package com.salesforce.mirus;
 
-import com.salesforce.mirus.config.TaskConfig;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
+
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -31,6 +34,9 @@ import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.HeaderConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.salesforce.mirus.config.TaskConfig;
+import com.salesforce.mirus.config.TaskConfig.ReplayPolicy;
 
 interface ConsumerFactory {
   Consumer<byte[], byte[]> newConsumer(Map<String, Object> consumerProperties);
@@ -49,7 +55,7 @@ public class MirusSourceTask extends SourceTask {
 
   private static final Logger logger = LoggerFactory.getLogger(MirusSourceTask.class);
 
-  private static final String KEY_OFFSET = "offset";
+  static final String KEY_OFFSET = "offset";
 
   private final ConsumerFactory consumerFactory;
 
@@ -63,6 +69,11 @@ public class MirusSourceTask extends SourceTask {
   private Converter keyConverter;
   private Converter valueConverter;
   private HeaderConverter headerConverter;
+  private ReplayPolicy replayPolicy;
+  private long replayWindowRecords;
+
+  private final Map<TopicPartition, Long> latestOffsetMap = new HashMap<>();
+  private final Set<TopicPartition> loggingFlags = new HashSet<>();
 
   protected AtomicBoolean shutDown = new AtomicBoolean(false);
 
@@ -102,6 +113,8 @@ public class MirusSourceTask extends SourceTask {
     this.keyConverter = config.getKeyConverter();
     this.valueConverter = config.getValueConverter();
     this.headerConverter = config.getHeaderConverter();
+    this.replayPolicy = config.getReplayPolicy();
+    this.replayWindowRecords = config.getReplayWindowRecords();
 
     logger.debug("Task starting with partitions: {}", config.getInternalTaskPartitions());
 
@@ -188,8 +201,37 @@ public class MirusSourceTask extends SourceTask {
 
   List<SourceRecord> sourceRecords(ConsumerRecords<byte[], byte[]> pollResult) {
     List<SourceRecord> sourceRecords = new ArrayList<>(pollResult.count());
-    pollResult.forEach(sourceRecord -> sourceRecords.add(toSourceRecord(sourceRecord)));
+    pollResult.forEach(
+        consumerRecord -> {
+          if (replayPolicy == ReplayPolicy.FILTER && !isSkippedRecord(consumerRecord)) {
+            sourceRecords.add(toSourceRecord(consumerRecord));
+          }
+        });
     return sourceRecords;
+  }
+
+  private boolean isSkippedRecord(ConsumerRecord<byte[], byte[]> consumerRecord) {
+    TopicPartition topicPartition = new TopicPartition(consumerRecord.topic(), consumerRecord.partition());
+    long sourceOffset = consumerRecord.offset();
+    Long latestOffset = latestOffsetMap.get(topicPartition);
+    // Skip any record that has already been handled by this task
+    if (latestOffset != null && sourceOffset <= (latestOffset - replayWindowRecords)) {
+      maybeLogSkippedRecord(topicPartition, sourceOffset, latestOffset);
+      return true;
+    } else {
+      latestOffsetMap.put(topicPartition, sourceOffset);
+    }
+    return false;
+  }
+
+  private void maybeLogSkippedRecord(TopicPartition topicPartition, long sourceOffset, long latestOffset) {
+    if(!loggingFlags.contains(topicPartition)) {
+      logger.info("Skipping record with topic-partition={}, offset={}. Latest previously recorded offset={}. "
+        + "This log statement is recorded once per task instance per topic-partition.",
+        topicPartition, sourceOffset, latestOffset);
+      loggingFlags.add(topicPartition);
+    }
+
   }
 
   private SourceRecord toSourceRecord(ConsumerRecord<byte[], byte[]> consumerRecord) {
