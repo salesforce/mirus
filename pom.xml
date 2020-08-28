@@ -4,7 +4,7 @@
 
     <groupId>com.salesforce.mirus</groupId>
     <artifactId>mirus</artifactId>
-    <version>0.3.1-SNAPSHOT</version>
+    <version>0.3.1</version>
 
     <name>Mirus</name>
     <description>Apache Kafka data replication tool based on Kafka Connect</description>
@@ -335,7 +335,7 @@
         <connection>scm:git:https://github.com/salesforce/mirus.git</connection>
         <developerConnection>scm:git:https://github.com/salesforce/mirus.git</developerConnection>
         <url>http://github.com/salesforce/mirus</url>
-        <tag>HEAD</tag>
+        <tag>v0.3.1</tag>
     </scm>
 
     <distributionManagement>
