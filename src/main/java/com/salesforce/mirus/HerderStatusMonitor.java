@@ -110,7 +110,7 @@ public class HerderStatusMonitor implements Runnable {
           if (connectorState == ConnectorStatus.State.RUNNING) {
             // All workers need to process all assigned tasks for the current connector
             connectorInfo.tasks().forEach(task -> processTask(task, herder.taskStatus(task)));
-          } else if (connectorState == ConnectorStatus.State.FAILED) {
+          } else {
             connectorJmxReport.closeConnector(connectorName);
           }
         });
