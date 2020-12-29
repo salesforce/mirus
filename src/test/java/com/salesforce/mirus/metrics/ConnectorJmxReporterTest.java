@@ -82,4 +82,27 @@ public class ConnectorJmxReporterTest {
             .metric(new MetricName("connector-failed-restart-attempts-count", GROUP, "", tags))
             .metricValue());
   }
+
+  @Test
+  public void testMetricsClearAfterConnectorClosed() {
+    assertEquals(
+            0.0d,
+            metrics
+                    .metric(new MetricName("task-failed-restart-attempts-count", GROUP, "", tags))
+                    .metricValue());
+    connectorJmxReporter.incrementTotalFailedCount(CONNECTOR_NAME);
+    assertEquals(
+            1.0d,
+            metrics
+                    .metric(new MetricName("task-failed-restart-attempts-count", GROUP, "", tags))
+                    .metricValue());
+
+    connectorJmxReporter.closeConnector(CONNECTOR_NAME);
+    connectorJmxReporter.handleConnector(herder, connectorInfo);
+    assertEquals(
+            0.0d,
+            metrics
+                    .metric(new MetricName("task-failed-restart-attempts-count", GROUP, "", tags))
+                    .metricValue());
+  }
 }

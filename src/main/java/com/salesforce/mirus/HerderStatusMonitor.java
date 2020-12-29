@@ -110,6 +110,8 @@ public class HerderStatusMonitor implements Runnable {
           if (connectorState == ConnectorStatus.State.RUNNING) {
             // All workers need to process all assigned tasks for the current connector
             connectorInfo.tasks().forEach(task -> processTask(task, herder.taskStatus(task)));
+          } else if (connectorState == ConnectorStatus.State.FAILED) {
+            connectorJmxReport.closeConnector(connectorName);
           }
         });
 
@@ -136,6 +138,7 @@ public class HerderStatusMonitor implements Runnable {
       TaskStatus.State taskState = TaskStatus.State.valueOf(taskStatus.state());
       if (taskState == TaskStatus.State.FAILED) {
         connectorJmxReport.incrementTotalFailedCount(taskId.connector());
+        taskJmxReporter.closeTask(taskId);
         if (autoRestartTaskEnabled) {
           logger.info("Attempting to restart task {}", taskId);
           herder.restartTask(taskId, this::onTaskRestart);
