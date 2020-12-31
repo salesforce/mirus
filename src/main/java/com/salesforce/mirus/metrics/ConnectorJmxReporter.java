@@ -132,6 +132,7 @@ public class ConnectorJmxReporter extends AbstractMirusJmxReporter {
             connectorLevelJmxTags,
             connectorTags);
 
+    // Won't reset this metric when connector restart
     MetricName restartAttemptsPerConnectorMetric =
         getMetric(
             FAILED_CONNECTOR_ATTEMPTS_METRIC_NAME + "-count",
@@ -147,8 +148,7 @@ public class ConnectorJmxReporter extends AbstractMirusJmxReporter {
             failedMetric,
             unassignedMetric,
             destroyedMetric,
-            totalAttemptsPerConnectorMetric,
-            restartAttemptsPerConnectorMetric);
+            totalAttemptsPerConnectorMetric);
     connectorMetrics.put(connectorName, metricsSet);
 
     Set<String> sensorSet = new HashSet<>();
@@ -187,7 +187,8 @@ public class ConnectorJmxReporter extends AbstractMirusJmxReporter {
     if (!metrics.metrics().containsKey(restartAttemptsPerConnectorMetric)) {
       String sensorName = FAILED_CONNECTOR_ATTEMPTS_METRIC_NAME + connectorName;
       metrics.sensor(sensorName).add(restartAttemptsPerConnectorMetric, new Total());
-      sensorSet.add(sensorName);
+
+      // Won't reset this metric when connector restart
     }
 
     connectorSensors.put(connectorName, sensorSet);
@@ -196,14 +197,11 @@ public class ConnectorJmxReporter extends AbstractMirusJmxReporter {
   public void incrementTotalFailedCount(String connector) {
     String sensorName = FAILED_TASK_ATTEMPTS_METRIC_NAME + connector;
     metrics.sensor(sensorName).record(1, Time.SYSTEM.milliseconds());
-
-    connectorSensors.get(connector).add(sensorName);
   }
 
   public void incrementConnectorRestartAttempts(String connector) {
     String sensorName = FAILED_CONNECTOR_ATTEMPTS_METRIC_NAME + connector;
     metrics.sensor(sensorName).record(1, Time.SYSTEM.milliseconds());
-    // Won't clear this metrics after connector restart
   }
 
   public synchronized void closeConnector(String connector) {
