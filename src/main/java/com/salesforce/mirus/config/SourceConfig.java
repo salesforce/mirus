@@ -43,8 +43,17 @@ public class SourceConfig {
     return simpleConfig.originalsWithPrefix("consumer.");
   }
 
-  public String getDestinationBootstrapServers() {
-    return simpleConfig.getString(SourceConfigDefinition.DESTINATION_BOOTSTRAP_SERVERS.key);
+  private Map<String, Object> getDestinationProperties() {
+    return simpleConfig.originalsWithPrefix("destination.");
+  }
+
+  public Map<String, Object> getDestinationConsumerConfigs() {
+    Map<String, Object> reconciledConsumerProperties = getConsumerProperties();
+    Map<String, Object> destinationProperties = getDestinationProperties();
+    // override consumer properties with any KafkaMonitor-specific property
+    destinationProperties.forEach((k, v) -> reconciledConsumerProperties.put(k, v));
+
+    return reconciledConsumerProperties;
   }
 
   public boolean getEnablePartitionMatching() {

@@ -21,7 +21,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.RetriableException;
@@ -155,13 +154,10 @@ class KafkaMonitor implements Runnable {
   }
 
   private static Consumer<byte[], byte[]> newDestinationConsumer(SourceConfig config) {
-    Map<String, Object> consumerProperties = config.getConsumerProperties();
-
+    Map<String, Object> consumerProperties = config.getDestinationConsumerConfigs();
     // The "monitor2" client id suffix is used to keep JMX bean names distinct
     consumerProperties.computeIfPresent(
         CommonClientConfigs.CLIENT_ID_CONFIG, (k, v) -> v + "monitor2");
-    consumerProperties.put(
-        ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, config.getDestinationBootstrapServers());
     return new KafkaConsumer<>(consumerProperties);
   }
 
