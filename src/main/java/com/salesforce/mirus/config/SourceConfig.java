@@ -49,9 +49,8 @@ public class SourceConfig {
 
   public Map<String, Object> getDestinationConsumerConfigs() {
     Map<String, Object> reconciledConsumerProperties = getConsumerProperties();
-    Map<String, Object> destinationProperties = getDestinationProperties();
     // override consumer properties with any KafkaMonitor-specific property
-    destinationProperties.forEach((k, v) -> reconciledConsumerProperties.put(k, v));
+    getDestinationProperties().forEach((k, v) -> reconciledConsumerProperties.put(k, v));
 
     return reconciledConsumerProperties;
   }
