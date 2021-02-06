@@ -78,10 +78,10 @@ public class SourceConfigTest {
     properties.put("topics", "abc,def");
     properties.put("source.bootstrap.servers", "localhost:123");
     properties.put("destination.bootstrap.servers", "remotehost1:123,remotehost2:123");
-    properties.put("destination.b", "11,22,33");
-    properties.put("destination.ssl.http.proxy.address", "");
+    properties.put("destination.consumer.b", "11,22,33");
+    properties.put("destination.consumer.ssl.http.proxy.address", "");
     properties.put("source.consumer.poll.timeout.ms", "1000");
-    properties.put("destination.topic.name.suffix", "suffix");
+    properties.put("destination.consumer.topic.name.suffix", "suffix");
     properties.put("extra.key", "suffix");
     properties.put("consumer.a", "1");
     properties.put("consumer.b", "1,2,3");
@@ -89,7 +89,26 @@ public class SourceConfigTest {
   }
 
   @Test
-  public void destinationPropertiesShouldOverrideDefaultConsumerProps() {
+  public void destinationBootstrapPrecedenceIsRight(){
+    Map<String, String> properties = new HashMap<>();
+    properties.put("name", "testConnector");
+    properties.put("destination.bootstrap.servers", "bad1:123,bad2:123");
+    properties.put("destination.consumer.bootstrap.servers", "good1:123,good2:123");
+    properties.put("consumer.a", "1");
+    properties.put("destination.consumer.a", "11");
+    properties.put("destination.consumer.b", "22");
+    mirusSourceConfig = new SourceConfig(properties);
+
+    Map<String, String> expectedDestConsumerProperties = new HashMap<>();
+    expectedDestConsumerProperties.put("bootstrap.servers", "good1:123,good2:123");
+    expectedDestConsumerProperties.put("a", "11");
+    expectedDestConsumerProperties.put("b", "22");
+    assertThat(
+        mirusSourceConfig.getDestinationConsumerConfigs(), is(expectedDestConsumerProperties));
+  }
+
+  @Test
+  public void destinationConsumerPropertiesShouldOverrideDefaultConsumerProps() {
     Map<String, String> expectedConsumerProperties = new HashMap<>();
     expectedConsumerProperties.put("a", "1");
     expectedConsumerProperties.put("b", "1,2,3");

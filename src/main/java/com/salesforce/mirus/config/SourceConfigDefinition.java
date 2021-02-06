@@ -89,7 +89,13 @@ public enum SourceConfigDefinition {
       ConfigDef.Type.CLASS,
       "org.apache.kafka.connect.converters.ByteArrayConverter",
       ConfigDef.Importance.MEDIUM,
-      "Converter class to apply to source record headers");
+      "Converter class to apply to source record headers"),
+  DESTINATION_BOOTSTRAP_SERVERS(
+          "destination.bootstrap.servers",
+          ConfigDef.Type.STRING,
+          "",
+          ConfigDef.Importance.HIGH,
+          "Comma-separated list of destination bootstrap server endpoints in standard format. This is used by the Kafka Monitor for run-time topic validation");
 
   String key;
   ConfigDef.Type type;

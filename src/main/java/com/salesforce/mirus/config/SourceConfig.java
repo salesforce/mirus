@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.protocol.types.Field;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.runtime.ConnectorConfig;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -44,7 +45,14 @@ public class SourceConfig {
   }
 
   private Map<String, Object> getDestinationProperties() {
-    return simpleConfig.originalsWithPrefix("destination.");
+    // handle destination.bootstrap.server separately
+    String destBootstrap =
+        simpleConfig.getString(SourceConfigDefinition.DESTINATION_BOOTSTRAP_SERVERS.key);
+    Map<String, Object> destConsumerProps =
+        simpleConfig.originalsWithPrefix("destination.consumer.");
+    destConsumerProps.computeIfAbsent(
+        "bootstrap.servers", s -> destConsumerProps.put("bootstrap.servers", destBootstrap));
+    return destConsumerProps;
   }
 
   public Map<String, Object> getDestinationConsumerConfigs() {
