@@ -113,6 +113,76 @@ public class KafkaMonitorTest {
   }
 
   @Test
+  public void destinationConsumerInheritDefaultConsumer() {
+    Map<String, String> properties = getBaseProperties();
+    properties.put(SourceConfigDefinition.TOPICS_REGEX.getKey(), "reroute.*");
+    properties.put("transforms", "reroute");
+    properties.put("transforms.reroute.type", "org.apache.kafka.connect.transforms.RegexRouter");
+    properties.put("transforms.reroute.regex", "^reroute\\.outgoing$");
+    properties.put("consumer.a", "1");
+    properties.put("consumer.b", "2");
+    properties.put("destination.bootstrap.servers", "host1:123,host2:123");
+
+    SourceConfig config = new SourceConfig(properties);
+    Map<String, Object> destProps = kafkaMonitor.getReconciledDestConsumerConfigs(config);
+
+    Map<String, String> expectedDestConsumerProperties = new HashMap<>();
+    expectedDestConsumerProperties.put("bootstrap.servers", "host1:123,host2:123");
+    expectedDestConsumerProperties.put("client.id", "testId");
+    expectedDestConsumerProperties.put("a", "1");
+    expectedDestConsumerProperties.put("b", "2");
+
+    assertThat(destProps, is(expectedDestConsumerProperties));
+  }
+
+  @Test
+  public void destinationConsumerOverridesDefaultConsumerProps() {
+    Map<String, String> properties = getBaseProperties();
+    properties.put(SourceConfigDefinition.TOPICS_REGEX.getKey(), "reroute.*");
+    properties.put("transforms", "reroute");
+    properties.put("transforms.reroute.type", "org.apache.kafka.connect.transforms.RegexRouter");
+    properties.put("transforms.reroute.regex", "^reroute\\.outgoing$");
+    properties.put("consumer.a", "1");
+    properties.put("consumer.b", "2");
+    properties.put("consumer.c", "3");
+    properties.put("destination.consumer.a", "11");
+    properties.put("destination.consumer.b", "22");
+    properties.put("destination.bootstrap.servers", "bad1:123,bad2:123");
+    properties.put("destination.consumer.bootstrap.servers", "good1:123,good2:123");
+
+    SourceConfig config = new SourceConfig(properties);
+    Map<String, Object> destProps = kafkaMonitor.getReconciledDestConsumerConfigs(config);
+
+    Map<String, String> expectedDestConsumerProperties = new HashMap<>();
+    expectedDestConsumerProperties.put("bootstrap.servers", "good1:123,good2:123");
+    expectedDestConsumerProperties.put("client.id", "testId");
+    expectedDestConsumerProperties.put("a", "11");
+    expectedDestConsumerProperties.put("b", "22");
+    expectedDestConsumerProperties.put("c", "3");
+
+    assertThat(destProps, is(expectedDestConsumerProperties));
+  }
+
+  @Test
+  public void legacyDestinationBootstrapPropertyAddedToDestConsumerProps() {
+    Map<String, String> properties = getBaseProperties();
+    properties.put(SourceConfigDefinition.TOPICS_REGEX.getKey(), "reroute.*");
+    properties.put("transforms", "reroute");
+    properties.put("transforms.reroute.type", "org.apache.kafka.connect.transforms.RegexRouter");
+    properties.put("transforms.reroute.regex", "^reroute\\.outgoing$");
+    properties.put("destination.bootstrap.servers", "host1:123,host2:123");
+
+    SourceConfig config = new SourceConfig(properties);
+    Map<String, Object> destProps = kafkaMonitor.getReconciledDestConsumerConfigs(config);
+
+    Map<String, String> expectedDestConsumerProperties = new HashMap<>();
+    expectedDestConsumerProperties.put("bootstrap.servers", "host1:123,host2:123");
+    expectedDestConsumerProperties.put("client.id", "testId");
+
+    assertThat(destProps, is(expectedDestConsumerProperties));
+  }
+
+  @Test
   public void shouldOnlyAssignPartitionsPresentInDestination() {
     kafkaMonitor.partitionsChanged();
     List<Map<String, String>> result = kafkaMonitor.taskConfigs(3);

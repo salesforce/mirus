@@ -78,50 +78,12 @@ public class SourceConfigTest {
     properties.put("topics", "abc,def");
     properties.put("source.bootstrap.servers", "localhost:123");
     properties.put("destination.bootstrap.servers", "remotehost1:123,remotehost2:123");
-    properties.put("destination.consumer.b", "11,22,33");
-    properties.put("destination.consumer.ssl.http.proxy.address", "");
     properties.put("source.consumer.poll.timeout.ms", "1000");
-    properties.put("destination.consumer.topic.name.suffix", "suffix");
+    properties.put("destination.topic.name.suffix", "suffix");
     properties.put("extra.key", "suffix");
     properties.put("consumer.a", "1");
     properties.put("consumer.b", "1,2,3");
     mirusSourceConfig = new SourceConfig(properties);
-  }
-
-  @Test
-  public void destinationBootstrapPrecedenceIsRight(){
-    Map<String, String> properties = new HashMap<>();
-    properties.put("name", "testConnector");
-    properties.put("destination.bootstrap.servers", "bad1:123,bad2:123");
-    properties.put("destination.consumer.bootstrap.servers", "good1:123,good2:123");
-    properties.put("consumer.a", "1");
-    properties.put("destination.consumer.a", "11");
-    properties.put("destination.consumer.b", "22");
-    mirusSourceConfig = new SourceConfig(properties);
-
-    Map<String, String> expectedDestConsumerProperties = new HashMap<>();
-    expectedDestConsumerProperties.put("bootstrap.servers", "good1:123,good2:123");
-    expectedDestConsumerProperties.put("a", "11");
-    expectedDestConsumerProperties.put("b", "22");
-    assertThat(
-        mirusSourceConfig.getDestinationConsumerConfigs(), is(expectedDestConsumerProperties));
-  }
-
-  @Test
-  public void destinationConsumerPropertiesShouldOverrideDefaultConsumerProps() {
-    Map<String, String> expectedConsumerProperties = new HashMap<>();
-    expectedConsumerProperties.put("a", "1");
-    expectedConsumerProperties.put("b", "1,2,3");
-    assertThat(mirusSourceConfig.getConsumerProperties(), is(expectedConsumerProperties));
-
-    Map<String, String> expectedDestConsumerProperties = new HashMap<>();
-    expectedDestConsumerProperties.put("bootstrap.servers", "remotehost1:123,remotehost2:123");
-    expectedDestConsumerProperties.put("ssl.http.proxy.address", "");
-    expectedDestConsumerProperties.put("b", "11,22,33");
-    expectedDestConsumerProperties.put("a", "1");
-    expectedDestConsumerProperties.put("topic.name.suffix", "suffix");
-    assertThat(
-        mirusSourceConfig.getDestinationConsumerConfigs(), is(expectedDestConsumerProperties));
   }
 
   @Test
@@ -133,19 +95,14 @@ public class SourceConfigTest {
   }
 
   @Test
-  public void consumerDestinationPropertiesShouldIncludeBothDefaultAndDestinationProps() {
-    Map<String, String> expectedProperties = new HashMap<>();
-    expectedProperties.put("bootstrap.servers", "remotehost1:123,remotehost2:123");
-    expectedProperties.put("ssl.http.proxy.address", "");
-    expectedProperties.put("topic.name.suffix", "suffix");
-    expectedProperties.put("a", "1");
-    expectedProperties.put("b", "11,22,33");
-    assertThat(mirusSourceConfig.getDestinationConsumerConfigs(), is(expectedProperties));
+  public void defaultValuesShouldBeApplied() {
+    assertThat(mirusSourceConfig.getTopicsRegex(), is(""));
   }
 
   @Test
-  public void defaultValuesShouldBeApplied() {
-    assertThat(mirusSourceConfig.getTopicsRegex(), is(""));
+  public void destinationBootstrapShouldBeAvailable() {
+    assertThat(
+        mirusSourceConfig.getDestinationBootstrapServers(), is("remotehost1:123,remotehost2:123"));
   }
 
   @Test

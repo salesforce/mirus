@@ -153,8 +153,29 @@ class KafkaMonitor implements Runnable {
     return new KafkaConsumer<>(consumerProperties);
   }
 
+  /**
+   * * Reconciles the default consumer properties with the destination-consumer properties. The
+   * destination-consumer properties have higher precedence.
+   *
+   * @param config config of the source connector
+   * @return map that includes the consumer configs
+   */
+  static Map<String, Object> getReconciledDestConsumerConfigs(SourceConfig config) {
+    // handle destination.bootstrap.server separately
+    // keeping this config for backward compatibility
+    String destBootstrap = config.getDestinationBootstrapServers();
+    Map<String, Object> destConsumerProps = config.getDestinationConsumerProperties();
+
+    destConsumerProps.computeIfAbsent(
+        "bootstrap.servers", s -> destConsumerProps.put("bootstrap.servers", destBootstrap));
+    Map<String, Object> reconciledConsumerConfigs = config.getConsumerProperties();
+    // use destination.consumer properties to override default consumer properties
+    destConsumerProps.forEach((k, v) -> reconciledConsumerConfigs.put(k, v));
+    return reconciledConsumerConfigs;
+  }
+
   private static Consumer<byte[], byte[]> newDestinationConsumer(SourceConfig config) {
-    Map<String, Object> consumerProperties = config.getDestinationConsumerConfigs();
+    Map<String, Object> consumerProperties = getReconciledDestConsumerConfigs(config);
     // The "monitor2" client id suffix is used to keep JMX bean names distinct
     consumerProperties.computeIfPresent(
         CommonClientConfigs.CLIENT_ID_CONFIG, (k, v) -> v + "monitor2");

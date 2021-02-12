@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.common.protocol.types.Field;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.runtime.ConnectorConfig;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -44,23 +43,13 @@ public class SourceConfig {
     return simpleConfig.originalsWithPrefix("consumer.");
   }
 
-  private Map<String, Object> getDestinationProperties() {
-    // handle destination.bootstrap.server separately
-    String destBootstrap =
-        simpleConfig.getString(SourceConfigDefinition.DESTINATION_BOOTSTRAP_SERVERS.key);
-    Map<String, Object> destConsumerProps =
-        simpleConfig.originalsWithPrefix("destination.consumer.");
-    destConsumerProps.computeIfAbsent(
-        "bootstrap.servers", s -> destConsumerProps.put("bootstrap.servers", destBootstrap));
-    return destConsumerProps;
+  public Map<String, Object> getDestinationConsumerProperties() {
+    return simpleConfig.originalsWithPrefix("destination.consumer.");
   }
 
-  public Map<String, Object> getDestinationConsumerConfigs() {
-    Map<String, Object> reconciledConsumerProperties = getConsumerProperties();
-    // override consumer properties with any KafkaMonitor-specific property
-    getDestinationProperties().forEach((k, v) -> reconciledConsumerProperties.put(k, v));
-
-    return reconciledConsumerProperties;
+  @Deprecated
+  public String getDestinationBootstrapServers() {
+    return simpleConfig.getString(SourceConfigDefinition.DESTINATION_BOOTSTRAP_SERVERS.key);
   }
 
   public boolean getEnablePartitionMatching() {
