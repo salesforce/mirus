@@ -8,6 +8,8 @@
 
 package com.salesforce.mirus;
 
+import com.salesforce.mirus.config.TaskConfig;
+import com.salesforce.mirus.config.TaskConfig.ReplayPolicy;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -33,9 +35,6 @@ import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.HeaderConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.salesforce.mirus.config.TaskConfig;
-import com.salesforce.mirus.config.TaskConfig.ReplayPolicy;
 
 interface ConsumerFactory {
   Consumer<byte[], byte[]> newConsumer(Map<String, Object> consumerProperties);
@@ -210,7 +209,8 @@ public class MirusSourceTask extends SourceTask {
   }
 
   private boolean isSkippedRecord(ConsumerRecord<byte[], byte[]> consumerRecord) {
-    TopicPartition topicPartition = new TopicPartition(consumerRecord.topic(), consumerRecord.partition());
+    TopicPartition topicPartition =
+        new TopicPartition(consumerRecord.topic(), consumerRecord.partition());
     long sourceOffset = consumerRecord.offset();
     Long latestOffset = latestOffsetMap.get(topicPartition);
     // Skip any record that has already been handled by this task
@@ -223,14 +223,17 @@ public class MirusSourceTask extends SourceTask {
     return false;
   }
 
-  private void maybeLogSkippedRecord(TopicPartition topicPartition, long sourceOffset, long latestOffset) {
-    if(!loggingFlags.contains(topicPartition)) {
-      logger.info("Skipping record with topic-partition={}, offset={}. Latest previously recorded offset={}. "
-                      + "This log statement is recorded once per task instance per topic-partition.",
-              topicPartition, sourceOffset, latestOffset);
+  private void maybeLogSkippedRecord(
+      TopicPartition topicPartition, long sourceOffset, long latestOffset) {
+    if (!loggingFlags.contains(topicPartition)) {
+      logger.info(
+          "Skipping record with topic-partition={}, offset={}. Latest previously recorded offset={}. "
+              + "This log statement is recorded once per task instance per topic-partition.",
+          topicPartition,
+          sourceOffset,
+          latestOffset);
       loggingFlags.add(topicPartition);
     }
-
   }
 
   private SourceRecord toSourceRecord(ConsumerRecord<byte[], byte[]> consumerRecord) {
