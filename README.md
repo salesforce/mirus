@@ -127,7 +127,7 @@ another topic in the same cluster. To avoid a conflict the destination topic nam
                "tasks.max": "5",
                "topics.whitelist": "test",
                "destination.topic.name.suffix": ".mirror",
-               "destination.bootstrap.servers": "localhost:9092",
+               "destination.consumer.bootstrap.servers": "localhost:9092",
                "consumer.bootstrap.servers": "localhost:9092",
                "consumer.client.id": "mirus-quickstart",
                "consumer.key.deserializer": "org.apache.kafka.common.serialization.ByteArrayDeserializer",
