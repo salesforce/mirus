@@ -43,6 +43,11 @@ public class SourceConfig {
     return simpleConfig.originalsWithPrefix("consumer.");
   }
 
+  public Map<String, Object> getDestinationConsumerProperties() {
+    return simpleConfig.originalsWithPrefix("destination.consumer.");
+  }
+
+  @Deprecated
   public String getDestinationBootstrapServers() {
     return simpleConfig.getString(SourceConfigDefinition.DESTINATION_BOOTSTRAP_SERVERS.key);
   }

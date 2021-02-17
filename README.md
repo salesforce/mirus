@@ -127,7 +127,7 @@ another topic in the same cluster. To avoid a conflict the destination topic nam
                "tasks.max": "5",
                "topics.whitelist": "test",
                "destination.topic.name.suffix": ".mirror",
-               "destination.bootstrap.servers": "localhost:9092",
+               "destination.consumer.bootstrap.servers": "localhost:9092",
                "consumer.bootstrap.servers": "localhost:9092",
                "consumer.client.id": "mirus-quickstart",
                "consumer.key.deserializer": "org.apache.kafka.common.serialization.ByteArrayDeserializer",
@@ -192,7 +192,9 @@ These can be added to the JSON config object posted to the REST API `/config` en
 new MirusSourceConnector instance. In addition, the Kafka Consumer instances
 created by Mirus Tasks can be configured using a `consumer.` prefix on the standard
 [Kafka Consumer properties](https://kafka.apache.org/documentation/#consumerconfigs). The equivalent
-KafkaProducer options are configured in the Mirus Worker Properties file (see below).
+KafkaProducer options are configured in the Mirus Worker Properties file (see below). The
+  `destination.consumer.`prefix can be used to override the properties of the KafkaConsumer that connects to
+   the destination Kafka cluster.
 
 - [Mirus Worker Properties](src/main/java/com/salesforce/mirus/config/MirusConfigDefinition.java)
 These are Mirus extensions to the Kafka Connect configuration, and should be applied to the
@@ -203,7 +205,7 @@ can also be configured using a `producer.` prefix on the standard
 ## Destination Topic Checking
 
 By default, Mirus checks that the destination topic exists in the destination Kafka cluster before
-stating to replicate data to it. This feature can be disabled by setting the
+starting to replicate data to it. This feature can be disabled by setting the
 [enable.destination.topic.checking](src/main/java/com/salesforce/mirus/config/SourceConfigDefinition.java#L66)
 config option to `false`.
 

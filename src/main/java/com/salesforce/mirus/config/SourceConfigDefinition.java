@@ -90,6 +90,7 @@ public enum SourceConfigDefinition {
       "org.apache.kafka.connect.converters.ByteArrayConverter",
       ConfigDef.Importance.MEDIUM,
       "Converter class to apply to source record headers"),
+  @Deprecated
   DESTINATION_BOOTSTRAP_SERVERS(
       "destination.bootstrap.servers",
       ConfigDef.Type.STRING,
