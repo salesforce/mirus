@@ -166,8 +166,9 @@ class KafkaMonitor implements Runnable {
     String destBootstrap = config.getDestinationBootstrapServers();
     Map<String, Object> destConsumerProps = config.getDestinationConsumerProperties();
 
-    destConsumerProps.computeIfAbsent(
-        "bootstrap.servers", s -> destConsumerProps.put("bootstrap.servers", destBootstrap));
+    if (!destConsumerProps.containsKey("bootstrap.servers")) {
+      destConsumerProps.put("bootstrap.servers", destBootstrap);
+    }
     Map<String, Object> reconciledConsumerConfigs = config.getConsumerProperties();
     // use destination.consumer properties to override default consumer properties
     destConsumerProps.forEach((k, v) -> reconciledConsumerConfigs.put(k, v));
