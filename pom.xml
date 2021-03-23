@@ -4,7 +4,7 @@
 
     <groupId>com.salesforce.mirus</groupId>
     <artifactId>mirus</artifactId>
-    <version>0.4.2-SNAPSHOT</version>
+    <version>0.5.0-SNAPSHOT</version>
 
     <name>Mirus</name>
     <description>Apache Kafka data replication tool based on Kafka Connect</description>
@@ -13,7 +13,7 @@
         <dist.dir>${project.build.directory}/dist</dist.dir>
         <jackson.version>2.10.0</jackson.version>
         <java.numeric.version>1.8</java.numeric.version>
-        <kafka.version>2.3.1</kafka.version>
+        <kafka.version>2.6.1</kafka.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -27,6 +27,11 @@
             <groupId>com.fasterxml.jackson.dataformat</groupId>
             <artifactId>jackson-dataformat-csv</artifactId>
             <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>30.1-jre</version>
         </dependency>
         <dependency>
             <groupId>org.apache.kafka</groupId>
