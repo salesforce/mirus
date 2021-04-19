@@ -28,6 +28,9 @@
             <artifactId>jackson-dataformat-csv</artifactId>
             <version>${jackson.version}</version>
         </dependency>
+        <!-- Guava is added in the 2.6.1 build of Mirus since the Google libraries were removed
+             in upstream Kafka Connect. This dependency can be removed with further refactoring
+             within Mirus. --> 
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
