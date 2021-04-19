@@ -10,6 +10,7 @@ package com.salesforce.mirus.config;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.contains;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
 import java.util.Collections;
@@ -119,5 +120,26 @@ public class SourceConfigTest {
     SimpleTransformation<SourceRecord> expectedTransform = new SimpleTransformation<>();
     expectedTransform.configure(Collections.singletonMap("magic.number", "45"));
     assertThat(transformations, contains(expectedTransform));
+  }
+
+  @Test
+  public void shouldNotConvertSingleTopicsRegex() {
+    String singleTopicsRegex = "^abc_cde$";
+    Map<String, String> properties = new HashMap<>();
+    properties.put("name", "connector");
+    properties.put("topics.regex", singleTopicsRegex);
+    SourceConfig configWithTopicsRegex = new SourceConfig(properties);
+
+    assertEquals(singleTopicsRegex, configWithTopicsRegex.getTopicsRegex());
+  }
+
+  @Test
+  public void shouldSupportTopicsRegexArrayConfig() {
+    Map<String, String> properties = new HashMap<>();
+    properties.put("name", "connector");
+    properties.put("topics.regex", "[abc_cde, fgh_ijk]");
+    SourceConfig configWithTopicsRegex = new SourceConfig(properties);
+
+    assertEquals("^(abc_cde)|(fgh_ijk)$", configWithTopicsRegex.getTopicsRegex());
   }
 }

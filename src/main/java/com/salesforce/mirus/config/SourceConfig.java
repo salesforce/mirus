@@ -9,8 +9,11 @@
 package com.salesforce.mirus.config;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.runtime.ConnectorConfig;
@@ -36,7 +39,7 @@ public class SourceConfig {
   }
 
   public String getTopicsRegex() {
-    return simpleConfig.getString(SourceConfigDefinition.TOPICS_REGEX.key);
+    return parseTopicsRegex(simpleConfig.getString(SourceConfigDefinition.TOPICS_REGEX.key).trim());
   }
 
   public Map<String, Object> getConsumerProperties() {
@@ -103,5 +106,20 @@ public class SourceConfig {
       transformations.add(transform);
     }
     return transformations;
+  }
+
+  private static String parseTopicsRegex(String topicsRegex) {
+    if (!topicsRegex.startsWith("[") || !topicsRegex.endsWith("]")) {
+      return topicsRegex;
+    }
+
+    String topicsRegexWithComma =
+        StringUtils.removeEnd(StringUtils.removeStart(topicsRegex, "["), "]");
+    String[] topicsRegexArray =
+        Arrays.stream(StringUtils.split(topicsRegexWithComma, ","))
+            .map(s -> "(" + s.trim() + ")")
+            .toArray(String[]::new);
+
+    return "^" + StringUtils.join(topicsRegexArray, '|') + "$";
   }
 }
