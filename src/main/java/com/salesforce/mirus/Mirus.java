@@ -135,6 +135,9 @@ public class Mirus {
    * support, to prevent JMX metric names from clashing. Also supports command-line property
    * overrides (useful for run-time port configuration), and starts the Mirus {@link
    * HerderStatusMonitor}.
+   *
+   * @param workerProps Worker Properties as a map.
+   * @return Connect object.
    */
   public Connect startConnect(Map<String, String> workerProps) {
     log.info("Scanning for plugin classes. This might take a moment ...");

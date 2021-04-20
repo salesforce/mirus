@@ -14,6 +14,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Future;
 import org.apache.kafka.connect.json.JsonConverter;
@@ -33,13 +34,17 @@ public class OffsetSetterTest {
 
   @Mock private Future<Void> futureVoid;
 
+  private JsonConverter converter;
+
   @Before
   public void setUp() {
-    offsetSetter = new OffsetSetter(new JsonConverter(), kafkaOffsetBackingStore);
+    converter = new JsonConverter();
+    converter.configure(Collections.singletonMap("schemas.enable", "false"), false);
+    offsetSetter = new OffsetSetter(converter, kafkaOffsetBackingStore);
   }
 
   @Test
-  public void shouldCallBackingStoreOncePerConnector() {
+  public void shouldCallBackingStoreOncePerConnectorWithTwoPartitionConnector() {
     List<OffsetInfo> offsetInfoList = new ArrayList<>();
     offsetInfoList.add(new OffsetInfo("connector-id1", "topic1", 1L, 123L));
     offsetInfoList.add(new OffsetInfo("connector-id1", "topic2", 1L, 123L));
@@ -48,5 +53,17 @@ public class OffsetSetterTest {
     when(kafkaOffsetBackingStore.set(any(), any())).thenReturn(futureVoid);
     offsetSetter.setOffsets(offsetInfoList.stream());
     verify(kafkaOffsetBackingStore, times(2)).set(any(), any());
+  }
+
+  @Test
+  public void shouldCallBackingStoreOncePerConnectorWithThreeConnectors() {
+    List<OffsetInfo> offsetInfoList = new ArrayList<>();
+    offsetInfoList.add(new OffsetInfo("connector-id1", "topic1", 1L, 123L));
+    offsetInfoList.add(new OffsetInfo("connector-id2", "topic2", 1L, 123L));
+    offsetInfoList.add(new OffsetInfo("connector-id3", "topic3", 1L, 123L));
+
+    when(kafkaOffsetBackingStore.set(any(), any())).thenReturn(futureVoid);
+    offsetSetter.setOffsets(offsetInfoList.stream());
+    verify(kafkaOffsetBackingStore, times(3)).set(any(), any());
   }
 }
