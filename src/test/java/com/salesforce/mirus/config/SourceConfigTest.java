@@ -140,6 +140,6 @@ public class SourceConfigTest {
     properties.put("topics.regex", "[abc_cde, fgh_ijk]");
     SourceConfig configWithTopicsRegex = new SourceConfig(properties);
 
-    assertEquals("^(abc_cde)|(fgh_ijk)$", configWithTopicsRegex.getTopicsRegex());
+    assertEquals("^((abc_cde)|(fgh_ijk))$", configWithTopicsRegex.getTopicsRegex());
   }
 }

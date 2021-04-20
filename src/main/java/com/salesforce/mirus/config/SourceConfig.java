@@ -120,6 +120,6 @@ public class SourceConfig {
             .map(s -> "(" + s.trim() + ")")
             .toArray(String[]::new);
 
-    return "^" + StringUtils.join(topicsRegexArray, '|') + "$";
+    return "^(" + StringUtils.join(topicsRegexArray, '|') + ")$";
   }
 }
