@@ -109,14 +109,12 @@ public class SourceConfig {
   }
 
   private static String parseTopicsRegex(String topicsRegex) {
-    if (!topicsRegex.startsWith("[") || !topicsRegex.endsWith("]")) {
+    if (!topicsRegex.contains(",")) {
       return topicsRegex;
     }
 
-    String topicsRegexWithComma =
-        StringUtils.removeEnd(StringUtils.removeStart(topicsRegex, "["), "]");
     String[] topicsRegexArray =
-        Arrays.stream(StringUtils.split(topicsRegexWithComma, ","))
+        Arrays.stream(StringUtils.split(topicsRegex, ","))
             .map(s -> "(" + s.trim() + ")")
             .toArray(String[]::new);
 

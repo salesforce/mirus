@@ -137,7 +137,7 @@ public class SourceConfigTest {
   public void shouldSupportTopicsRegexArrayConfig() {
     Map<String, String> properties = new HashMap<>();
     properties.put("name", "connector");
-    properties.put("topics.regex", "[abc_cde, fgh_ijk]");
+    properties.put("topics.regex", "abc_cde, fgh_ijk");
     SourceConfig configWithTopicsRegex = new SourceConfig(properties);
 
     assertEquals("^((abc_cde)|(fgh_ijk))$", configWithTopicsRegex.getTopicsRegex());
