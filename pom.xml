@@ -340,8 +340,8 @@
     </developers>
 
     <scm>
-        <connection>scm:git:https://github.com/salesforce/mirus.git</connection>
-        <developerConnection>scm:git:https://github.com/salesforce/mirus.git</developerConnection>
+        <connection>scm:git:ssh://git@github.com/salesforce/mirus.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/salesforce/mirus.git</developerConnection>
         <url>http://github.com/salesforce/mirus</url>
         <tag>HEAD</tag>
     </scm>
