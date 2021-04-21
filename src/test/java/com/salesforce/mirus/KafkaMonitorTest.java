@@ -12,6 +12,7 @@ import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.Matchers.*;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
 
@@ -110,6 +111,58 @@ public class KafkaMonitorTest {
         // Then parse that into TopicPartitions and flatten into a single list.
         .flatMap(i -> TopicPartitionSerDe.parseTopicPartitionList(i).stream())
         .collect(Collectors.toList());
+  }
+
+  @Test
+  public void shouldReplicateTopicsMatchRegexList() {
+    Map<String, String> properties = getBaseProperties();
+    properties.put(SourceConfigDefinition.TOPICS_REGEX_LIST.getKey(), "list.*, regex.*");
+    properties.put(SourceConfigDefinition.ENABLE_DESTINATION_TOPIC_CHECKING.getKey(), "false");
+    properties.put("transforms", "reroute");
+    properties.put(
+        "transforms.reroute.type", "org.apache.kafka.connect.transforms.TimestampRouter");
+    SourceConfig config = new SourceConfig(properties);
+    TaskConfigBuilder taskConfigBuilder =
+        new TaskConfigBuilder(new RoundRobinTaskAssignor(), config);
+
+    MockConsumer<byte[], byte[]> srcConsumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
+    updateMockPartitions(srcConsumer, "list.1", 2);
+    updateMockPartitions(srcConsumer, "list.2", 1);
+    updateMockPartitions(srcConsumer, "list.3", 1);
+    updateMockPartitions(srcConsumer, "regex.1", 1);
+    updateMockPartitions(srcConsumer, "regex.2", 1);
+    updateMockPartitions(srcConsumer, "reroute.outgoing", 1);
+
+    // Topic regex.2 is NOT present in destination
+    MockConsumer<byte[], byte[]> destConsumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
+    updateMockPartitions(destConsumer, "list.1", 2);
+    updateMockPartitions(destConsumer, "list.2", 1);
+    updateMockPartitions(destConsumer, "list.3", 1);
+    updateMockPartitions(destConsumer, "regex.1", 1);
+    updateMockPartitions(destConsumer, "reroute.incoming", 1);
+
+    KafkaMonitor monitor =
+        new KafkaMonitor(
+            mock(ConnectorContext.class), config, srcConsumer, destConsumer, taskConfigBuilder);
+    monitor.partitionsChanged();
+    List<Map<String, String>> result = monitor.taskConfigs(3);
+
+    List<TopicPartition> partitions = assignedTopicPartitionsFromTaskConfigs(result);
+
+    // Topic reroute.outgoing not matching regex list, shouldn't be replicated
+    assertEquals(6, partitions.size());
+
+    // All topics matching assignment regex, even ones not present in destination, should be
+    // replicated
+    assertThat(
+        partitions,
+        containsInAnyOrder(
+            new TopicPartition("list.1", 0),
+            new TopicPartition("list.1", 1),
+            new TopicPartition("list.2", 0),
+            new TopicPartition("list.3", 0),
+            new TopicPartition("regex.1", 0),
+            new TopicPartition("regex.2", 0)));
   }
 
   @Test

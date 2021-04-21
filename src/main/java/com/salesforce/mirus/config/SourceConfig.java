@@ -9,17 +9,18 @@
 package com.salesforce.mirus.config;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.runtime.ConnectorConfig;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.util.SimpleConfig;
+
+import static java.util.stream.Collectors.toList;
 
 public class SourceConfig {
 
@@ -39,7 +40,11 @@ public class SourceConfig {
   }
 
   public String getTopicsRegex() {
-    return parseTopicsRegex(simpleConfig.getString(SourceConfigDefinition.TOPICS_REGEX.key).trim());
+    return simpleConfig.getString(SourceConfigDefinition.TOPICS_REGEX.key);
+  }
+
+  public List<Pattern> getTopicsRegexList() {
+    return parseTopicsRegexList(simpleConfig.getList(SourceConfigDefinition.TOPICS_REGEX_LIST.key));
   }
 
   public Map<String, Object> getConsumerProperties() {
@@ -108,16 +113,18 @@ public class SourceConfig {
     return transformations;
   }
 
-  private static String parseTopicsRegex(String topicsRegex) {
-    if (!topicsRegex.contains(",")) {
-      return topicsRegex;
-    }
-
-    String[] topicsRegexArray =
-        Arrays.stream(StringUtils.split(topicsRegex, ","))
-            .map(s -> "(" + s.trim() + ")")
-            .toArray(String[]::new);
-
-    return "^(" + StringUtils.join(topicsRegexArray, '|') + ")$";
+  private static List<Pattern> parseTopicsRegexList(List<String> topicsRegexList) {
+    return topicsRegexList.stream()
+        .map(
+            r -> {
+              String regex;
+              if (r.trim().startsWith("^")) {
+                regex = r.trim();
+              } else {
+                regex = "^" + r.trim() + "$";
+              }
+              return Pattern.compile(regex);
+            })
+        .collect(toList());
   }
 }

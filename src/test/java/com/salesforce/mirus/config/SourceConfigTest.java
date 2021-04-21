@@ -126,29 +126,19 @@ public class SourceConfigTest {
   }
 
   @Test
-  public void shouldNotConvertSingleTopicsRegex() {
-    String singleTopicsRegex = "^abc\\.([a-zA-Z0-9]+)\\.log$";
-    Map<String, String> properties = new HashMap<>();
-    properties.put("name", "connector");
-    properties.put("topics.regex", singleTopicsRegex);
-    SourceConfig configWithTopicsRegex = new SourceConfig(properties);
-
-    assertEquals(singleTopicsRegex, configWithTopicsRegex.getTopicsRegex());
-  }
-
-  @Test
-  public void shouldSupportTopicsRegexArrayConfig() {
+  public void shouldSupportTopicsRegexListConfig() {
     Map<String, String> properties = new HashMap<>();
     String aRegex = "abc\\.([a-zA-Z0-9]+)\\.log";
     String aTopic = "abc.123a.log";
     assertTrue(Pattern.compile(aRegex).matcher(aTopic).matches());
 
     properties.put("name", "connector");
-    properties.put("topics.regex", "abc_cde, " + aRegex);
+    properties.put("topics.regex.list", "abc_cde, " + aRegex);
     SourceConfig configWithTopicsRegex = new SourceConfig(properties);
 
-    String resultedRegex = configWithTopicsRegex.getTopicsRegex();
-    assertEquals("^((abc_cde)|(abc\\.([a-zA-Z0-9]+)\\.log))$", resultedRegex);
-    assertTrue(Pattern.compile(resultedRegex).matcher(aTopic).matches());
+    List<Pattern> regexList = configWithTopicsRegex.getTopicsRegexList();
+    assertEquals(2, regexList.size());
+    assertEquals("^abc_cde$", regexList.get(0).toString());
+    assertTrue(regexList.get(1).matcher(aTopic).matches());
   }
 }
