@@ -33,6 +33,12 @@ public enum SourceConfigDefinition {
       "",
       ConfigDef.Importance.HIGH,
       "Java regex whitelist.  Matching topics names will be mirrored"),
+  TOPICS_REGEX_LIST(
+      "topics.regex.list",
+      ConfigDef.Type.LIST,
+      Collections.EMPTY_LIST,
+      ConfigDef.Importance.HIGH,
+      "Comma separated Java regex list. Matching topic names will be mirrored. Regex strings must not contain commas."),
   MONITOR_POLL_WAIT_MS(
       "monitor.poll.wait.ms",
       ConfigDef.Type.LONG,

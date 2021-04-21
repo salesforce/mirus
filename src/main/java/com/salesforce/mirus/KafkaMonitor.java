@@ -53,6 +53,7 @@ class KafkaMonitor implements Runnable {
   private final ConnectorContext context;
   private final List<String> topicsWhitelist;
   private final Pattern topicsRegexPattern;
+  private final List<Pattern> topicsRegexList;
   private final CountDownLatch shutDownLatch = new CountDownLatch(1);
   private final Consumer<byte[], byte[]> sourceConsumer;
   private final Consumer<byte[], byte[]> destinationConsumer;
@@ -86,9 +87,12 @@ class KafkaMonitor implements Runnable {
     this.topicsWhitelist = config.getTopicsWhitelist();
     this.monitorPollWaitMs = config.getMonitorPollWaitMs();
     this.topicsRegexPattern = Pattern.compile(config.getTopicsRegex());
+    this.topicsRegexList = config.getTopicsRegexList();
     this.sourceConsumer = sourceConsumer;
     this.destinationConsumer = destinationConsumer;
-    if (topicsWhitelist.isEmpty() && config.getTopicsRegex().isEmpty()) {
+    if (topicsWhitelist.isEmpty()
+        && config.getTopicsRegex().isEmpty()
+        && config.getTopicsRegexList().isEmpty()) {
       logger.warn("No whitelist configured");
     }
     this.taskConfigBuilder = taskConfigBuilder;
@@ -264,14 +268,12 @@ class KafkaMonitor implements Runnable {
   }
 
   private List<TopicPartition> fetchMatchingPartitions(Consumer<byte[], byte[]> consumer) {
-    return consumer
-        .listTopics()
-        .entrySet()
-        .stream()
+    return consumer.listTopics().entrySet().stream()
         .filter(
             e ->
                 topicsWhitelist.contains(e.getKey())
-                    || topicsRegexPattern.matcher(e.getKey()).matches())
+                    || topicsRegexPattern.matcher(e.getKey()).matches()
+                    || topicsRegexList.stream().anyMatch(r -> r.matcher(e.getKey()).matches()))
         .flatMap(e -> e.getValue().stream())
         .map(partitionInfo -> new TopicPartition(partitionInfo.topic(), partitionInfo.partition()))
         .collect(Collectors.toList());

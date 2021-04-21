@@ -10,12 +10,16 @@ package com.salesforce.mirus.config;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.contains;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
+
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -119,5 +123,22 @@ public class SourceConfigTest {
     SimpleTransformation<SourceRecord> expectedTransform = new SimpleTransformation<>();
     expectedTransform.configure(Collections.singletonMap("magic.number", "45"));
     assertThat(transformations, contains(expectedTransform));
+  }
+
+  @Test
+  public void shouldSupportTopicsRegexListConfig() {
+    Map<String, String> properties = new HashMap<>();
+    String aRegex = "abc\\.([a-zA-Z0-9]+)\\.log";
+    String aTopic = "abc.123a.log";
+    assertTrue(Pattern.compile(aRegex).matcher(aTopic).matches());
+
+    properties.put("name", "connector");
+    properties.put("topics.regex.list", "abc_cde, " + aRegex);
+    SourceConfig configWithTopicsRegex = new SourceConfig(properties);
+
+    List<Pattern> regexList = configWithTopicsRegex.getTopicsRegexList();
+    assertEquals(2, regexList.size());
+    assertEquals("^abc_cde$", regexList.get(0).toString());
+    assertTrue(regexList.get(1).matcher(aTopic).matches());
   }
 }
