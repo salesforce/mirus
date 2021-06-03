@@ -63,6 +63,10 @@ public class TaskConfig {
     return simpleConfig.getLong(SourceConfigDefinition.POLL_TIMEOUT_MS.key);
   }
 
+  public long getCommitFailureRestartMs() {
+    return simpleConfig.getLong(SourceConfigDefinition.COMMIT_FAILURE_RESTART_MS.key);
+  }
+
   public String getDestinationTopicNamePrefix() {
     return simpleConfig.getString(SourceConfigDefinition.DESTINATION_TOPIC_NAME_PREFIX.key);
   }

@@ -15,8 +15,10 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
 
 import com.salesforce.mirus.config.SourceConfigDefinition;
+import com.salesforce.mirus.config.TaskConfig;
 import com.salesforce.mirus.config.TaskConfig.ReplayPolicy;
 import com.salesforce.mirus.config.TaskConfigDefinition;
+import com.salesforce.mirus.utils.MockTime;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -354,5 +356,47 @@ public class MirusSourceTaskTest {
 
     assertThat(result.size(), is(3));
     assertThat(result.get(0).sourceOffset().get(MirusSourceTask.KEY_OFFSET), is(2L));
+  }
+
+  @Test(expected = RuntimeException.class)
+  public void shouldThrowExceptionWhenCommitFailed() {
+    mirusSourceTask.time = new MockTime();
+    // normal poll-commit cycle
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 0, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 1, 0, new byte[] {}, new byte[] {}));
+    List<SourceRecord> result = mirusSourceTask.poll();
+    assertThat(result.size(), is(2));
+    mirusSourceTask.commit();
+
+    // poll success but commit failed
+    TaskConfig config = new TaskConfig(mockTaskProperties());
+    mirusSourceTask.time.sleep(config.getCommitFailureRestartMs());
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 1, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 1, 1, new byte[] {}, new byte[] {}));
+    mirusSourceTask.poll();
+
+    // check commit failure and throw exception to restart task
+    mirusSourceTask.poll();
+  }
+
+  @Test
+  public void shouldNotThrowExceptionIfNotTimeToRestart() {
+    mirusSourceTask.time = new MockTime();
+    // normal poll-commit cycle
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 0, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 1, 0, new byte[] {}, new byte[] {}));
+    List<SourceRecord> result = mirusSourceTask.poll();
+    assertThat(result.size(), is(2));
+    mirusSourceTask.commit();
+
+    // poll success but commit failed
+    TaskConfig config = new TaskConfig(mockTaskProperties());
+    mirusSourceTask.time.sleep(config.getCommitFailureRestartMs() - 10);
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 1, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 1, 1, new byte[] {}, new byte[] {}));
+    mirusSourceTask.poll();
+
+    // check commit failure, no exception thrown as time is not up to restart task
+    mirusSourceTask.poll();
   }
 }

@@ -96,6 +96,12 @@ public enum SourceConfigDefinition {
       "org.apache.kafka.connect.converters.ByteArrayConverter",
       ConfigDef.Importance.MEDIUM,
       "Converter class to apply to source record headers"),
+  COMMIT_FAILURE_RESTART_MS(
+      "commit.failure.restart.ms",
+      ConfigDef.Type.LONG,
+      TimeUnit.MILLISECONDS.convert(5, TimeUnit.MINUTES),
+      ConfigDef.Importance.MEDIUM,
+      "Restart task if commit failed continuously in this duration"),
   @Deprecated
   DESTINATION_BOOTSTRAP_SERVERS(
       "destination.bootstrap.servers",

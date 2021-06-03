@@ -268,7 +268,10 @@ class KafkaMonitor implements Runnable {
   }
 
   private List<TopicPartition> fetchMatchingPartitions(Consumer<byte[], byte[]> consumer) {
-    return consumer.listTopics().entrySet().stream()
+    return consumer
+        .listTopics()
+        .entrySet()
+        .stream()
         .filter(
             e ->
                 topicsWhitelist.contains(e.getKey())

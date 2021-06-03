@@ -27,6 +27,8 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.utils.SystemTime;
+import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -69,11 +71,15 @@ public class MirusSourceTask extends SourceTask {
   private HeaderConverter headerConverter;
   private ReplayPolicy replayPolicy;
   private long replayWindowRecords;
+  private long commitTime = Long.MAX_VALUE;
+  private long pollTime = Long.MAX_VALUE;
 
   private final Map<TopicPartition, Long> latestOffsetMap = new HashMap<>();
   private final Set<TopicPartition> loggingFlags = new HashSet<>();
 
   protected AtomicBoolean shutDown = new AtomicBoolean(false);
+  protected Time time = new SystemTime();
+  private long commitFailureRestartMs;
 
   @SuppressWarnings("unused")
   public MirusSourceTask() {
@@ -107,6 +113,7 @@ public class MirusSourceTask extends SourceTask {
     this.destinationTopicNamePrefix = config.getDestinationTopicNamePrefix();
     this.destinationTopicNameSuffix = config.getDestinationTopicNameSuffix();
     this.enablePartitionMatching = config.getEnablePartitionMatching();
+    this.commitFailureRestartMs = config.getCommitFailureRestartMs();
 
     this.keyConverter = config.getKeyConverter();
     this.valueConverter = config.getValueConverter();
@@ -181,9 +188,11 @@ public class MirusSourceTask extends SourceTask {
 
     try {
       logger.trace("Calling poll");
+      checkCommitFailure();
       ConsumerRecords<byte[], byte[]> result = consumer.poll(consumerPollTimeoutMillis);
       logger.trace("Got {} records", result.count());
       if (!result.isEmpty()) {
+        pollTime = time.milliseconds();
         return sourceRecords(result);
       } else {
         return Collections.emptyList();
@@ -195,6 +204,22 @@ public class MirusSourceTask extends SourceTask {
 
     shutDownTask();
     return Collections.emptyList();
+  }
+
+  @Override
+  public void commit() {
+    commitTime = time.milliseconds();
+  }
+
+  private void checkCommitFailure() {
+    // if no success offset commit in the past duration, restart task to reestablish Kafka
+    // connection
+    long noCommitMs = pollTime - commitTime;
+    if (noCommitMs >= commitFailureRestartMs) {
+      logger.error(
+          "Unable to commit offset in the past {} seconds, restarting task...", noCommitMs / 1000);
+      throw new RuntimeException("Failed to commit offset for a while, restart task");
+    }
   }
 
   List<SourceRecord> sourceRecords(ConsumerRecords<byte[], byte[]> pollResult) {
