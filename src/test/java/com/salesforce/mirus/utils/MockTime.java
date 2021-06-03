@@ -15,7 +15,7 @@ import java.util.function.Supplier;
 import org.apache.kafka.common.errors.TimeoutException;
 import org.apache.kafka.common.utils.Time;
 
-/** A clock that you can manually advance by calling sleep Copied from Kafka repo */
+/** Copied from Kafka repo: A clock that you can manually advance by calling sleep */
 public class MockTime implements Time {
 
   interface MockTimeListener {
