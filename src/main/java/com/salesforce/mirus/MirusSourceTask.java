@@ -212,7 +212,7 @@ public class MirusSourceTask extends SourceTask {
   }
 
   private void checkCommitFailure() {
-    // if no success offset commit in the past duration, restart task to reestablish Kafka
+    // if no success offset commit in an extensive period of time, restart task to reestablish Kafka
     // connection
     long noCommitMs = pollTime - commitTime;
     if (noCommitMs >= commitFailureRestartMs) {
