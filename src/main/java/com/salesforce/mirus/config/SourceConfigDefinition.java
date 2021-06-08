@@ -101,7 +101,7 @@ public enum SourceConfigDefinition {
       ConfigDef.Type.LONG,
       TimeUnit.MILLISECONDS.convert(5, TimeUnit.MINUTES),
       ConfigDef.Importance.MEDIUM,
-      "Restart task if commit failed continuously in this duration"),
+      "Fail task if no successful commit is seen for this time. Tasks automatically restart by default"),
   @Deprecated
   DESTINATION_BOOTSTRAP_SERVERS(
       "destination.bootstrap.servers",

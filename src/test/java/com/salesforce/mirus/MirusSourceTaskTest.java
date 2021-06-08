@@ -370,9 +370,13 @@ public class MirusSourceTaskTest {
 
     // poll success but commit failed
     TaskConfig config = new TaskConfig(mockTaskProperties());
-    mirusSourceTask.time.sleep(config.getCommitFailureRestartMs());
+    mirusSourceTask.time.sleep(config.getCommitFailureRestartMs() / 2);
     mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 1, new byte[] {}, new byte[] {}));
     mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 1, 1, new byte[] {}, new byte[] {}));
+    mirusSourceTask.poll();
+    mirusSourceTask.time.sleep(config.getCommitFailureRestartMs() / 2);
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 2, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 1, 2, new byte[] {}, new byte[] {}));
     mirusSourceTask.poll();
 
     // check commit failure and throw exception to restart task
@@ -397,6 +401,29 @@ public class MirusSourceTaskTest {
     mirusSourceTask.poll();
 
     // check commit failure, no exception thrown as time is not up to restart task
+    mirusSourceTask.poll();
+  }
+
+  @Test
+  public void shouldNotThrowExceptionIfNoNewDataInCommitWindow() {
+    mirusSourceTask.time = new MockTime();
+    // normal poll-commit cycle
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 0, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 1, 0, new byte[] {}, new byte[] {}));
+    List<SourceRecord> result = mirusSourceTask.poll();
+    assertThat(result.size(), is(2));
+    mirusSourceTask.commit();
+
+    // poll success but commit failed
+    TaskConfig config = new TaskConfig(mockTaskProperties());
+    // no new data
+    mirusSourceTask.time.sleep(config.getCommitFailureRestartMs() + 10);
+    // new data coming
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 1, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 1, 1, new byte[] {}, new byte[] {}));
+    mirusSourceTask.poll();
+
+    // check commit failure
     mirusSourceTask.poll();
   }
 }

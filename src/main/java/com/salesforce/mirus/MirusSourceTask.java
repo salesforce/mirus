@@ -192,7 +192,7 @@ public class MirusSourceTask extends SourceTask {
       ConsumerRecords<byte[], byte[]> result = consumer.poll(consumerPollTimeoutMillis);
       logger.trace("Got {} records", result.count());
       if (!result.isEmpty()) {
-        pollTime = time.milliseconds();
+        setPollTime();
         return sourceRecords(result);
       } else {
         return Collections.emptyList();
@@ -208,6 +208,19 @@ public class MirusSourceTask extends SourceTask {
 
   @Override
   public void commit() {
+    setCommitTime();
+  }
+
+  private void setPollTime() {
+    long currentPollTime = time.milliseconds();
+    // no new data in the commit window, reset commit time
+    if ((currentPollTime - pollTime) >= commitFailureRestartMs) {
+      setCommitTime();
+    }
+    pollTime = currentPollTime;
+  }
+
+  private void setCommitTime() {
     commitTime = time.milliseconds();
   }
 
