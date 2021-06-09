@@ -8,11 +8,9 @@
 
 package com.salesforce.mirus;
 
-import static org.hamcrest.CoreMatchers.hasItems;
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.*;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.nullValue;
-import static org.junit.Assert.assertThat;
 
 import com.salesforce.mirus.config.SourceConfigDefinition;
 import com.salesforce.mirus.config.TaskConfig.ReplayPolicy;
@@ -44,8 +42,8 @@ import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTaskContext;
 import org.apache.kafka.connect.storage.OffsetStorageReader;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class MirusSourceTaskTest {
 
@@ -53,7 +51,7 @@ public class MirusSourceTaskTest {
   private MirusSourceTask mirusSourceTask;
   private MockConsumer<byte[], byte[]> mockConsumer;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     mockConsumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
     mockConsumer.updatePartitions(

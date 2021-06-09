@@ -19,8 +19,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class OffsetSerDeTest {
 
@@ -30,7 +30,7 @@ public class OffsetSerDeTest {
   private List<String> csvList;
   private List<String> jsonList;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     offsetCsv = OffsetSerDeFactory.create(Format.CSV);
     offsetJson = OffsetSerDeFactory.create(Format.JSON);

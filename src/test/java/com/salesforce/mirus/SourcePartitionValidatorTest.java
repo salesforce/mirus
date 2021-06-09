@@ -9,7 +9,7 @@
 package com.salesforce.mirus;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.Arrays;
 import java.util.List;
@@ -18,14 +18,14 @@ import org.apache.kafka.clients.consumer.MockConsumer;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class SourcePartitionValidatorTest {
 
   private MockConsumer<byte[], byte[]> mockConsumer;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     this.mockConsumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
     List<PartitionInfo> partitionInfoList =

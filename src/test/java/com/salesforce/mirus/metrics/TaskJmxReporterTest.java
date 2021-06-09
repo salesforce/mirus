@@ -8,15 +8,15 @@
 
 package com.salesforce.mirus.metrics;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.HashMap;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.metrics.Metrics;
 import org.apache.kafka.connect.runtime.rest.entities.ConnectorStateInfo.TaskState;
 import org.apache.kafka.connect.util.ConnectorTaskId;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class TaskJmxReporterTest {
 
@@ -26,7 +26,7 @@ public class TaskJmxReporterTest {
   private TaskJmxReporter taskJmxReporter;
   private Metrics metrics;
 
-  @Before
+  @BeforeEach
   public void setUp() throws Exception {
     metrics = new Metrics();
 

@@ -9,25 +9,22 @@
 package com.salesforce.mirus.config;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.hamcrest.Matchers.instanceOf;
-import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.*;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.kafka.connect.converters.ByteArrayConverter;
 import org.apache.kafka.connect.json.JsonConverter;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class TaskConfigTest {
 
   private TaskConfig taskConfig;
   private Map<String, String> properties;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     properties = new HashMap<>();
 
@@ -85,7 +82,7 @@ public class TaskConfigTest {
 
   @Test
   public void filterShouldRemoveUnusedConfig() {
-    Assert.assertThat(
+    assertThat(
         TaskConfig.filterProperties(properties).keySet(),
         containsInAnyOrder(
             "destination.topic.name.prefix",
