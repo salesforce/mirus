@@ -9,19 +9,19 @@
 package com.salesforce.mirus;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class ByteArrayConverterTest {
 
   private static final byte[] TEST_BYTES = "TEST".getBytes(StandardCharsets.UTF_8);
   private ByteArrayConverter byteArrayConverter;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     byteArrayConverter = new ByteArrayConverter();
     byteArrayConverter.configure(new HashMap<>(), false);

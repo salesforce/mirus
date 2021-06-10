@@ -9,7 +9,7 @@
 package com.salesforce.mirus;
 
 import static org.hamcrest.CoreMatchers.*;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import com.salesforce.mirus.assignment.RoundRobinTaskAssignor;
 import com.salesforce.mirus.config.SourceConfig;
@@ -22,8 +22,8 @@ import java.util.List;
 import java.util.Map;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.runtime.ConnectorConfig;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class TaskConfigBuilderTest {
 
@@ -35,7 +35,7 @@ public class TaskConfigBuilderTest {
     return new TaskConfigBuilder(new RoundRobinTaskAssignor(), new SourceConfig(properties));
   }
 
-  @Before
+  @BeforeEach
   public void setUp() {
     topicPartitionList = new ArrayList<>();
     topicPartitionList.add(new TopicPartition("a", 1));

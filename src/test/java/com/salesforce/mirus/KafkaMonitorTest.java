@@ -8,12 +8,12 @@
 
 package com.salesforce.mirus;
 
-import static org.hamcrest.CoreMatchers.hasItem;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.not;
-import static org.hamcrest.Matchers.*;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.CoreMatchers.*;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 
 import com.salesforce.mirus.assignment.RoundRobinTaskAssignor;
@@ -36,8 +36,8 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.TimeoutException;
 import org.apache.kafka.connect.connector.ConnectorContext;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class KafkaMonitorTest {
 
@@ -45,7 +45,7 @@ public class KafkaMonitorTest {
   private MockConsumer<byte[], byte[]> mockSourceConsumer;
   private MockConsumer<byte[], byte[]> mockDestinationConsumer;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     Map<String, String> properties = getBaseProperties();
     SourceConfig config = new SourceConfig(properties);
@@ -327,22 +327,26 @@ public class KafkaMonitorTest {
     assertThat(partitions, hasItem(new TopicPartition("topic5", 0)));
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void shouldThrowWhenUnsupportedTransformationEncountered() {
-    Map<String, String> properties = getBaseProperties();
-    properties.put("transforms", "reroute");
-    properties.put(
-        "transforms.reroute.type", "org.apache.kafka.connect.transforms.TimestampRouter");
-    SourceConfig config = new SourceConfig(properties);
-    TaskConfigBuilder taskConfigBuilder =
-        new TaskConfigBuilder(new RoundRobinTaskAssignor(), config);
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> {
+          Map<String, String> properties = getBaseProperties();
+          properties.put("transforms", "reroute");
+          properties.put(
+              "transforms.reroute.type", "org.apache.kafka.connect.transforms.TimestampRouter");
+          SourceConfig config = new SourceConfig(properties);
+          TaskConfigBuilder taskConfigBuilder =
+              new TaskConfigBuilder(new RoundRobinTaskAssignor(), config);
 
-    new KafkaMonitor(
-        mock(ConnectorContext.class),
-        config,
-        mockSourceConsumer,
-        mockDestinationConsumer,
-        taskConfigBuilder);
+          new KafkaMonitor(
+              mock(ConnectorContext.class),
+              config,
+              mockSourceConsumer,
+              mockDestinationConsumer,
+              taskConfigBuilder);
+        });
   }
 
   @Test

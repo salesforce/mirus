@@ -9,9 +9,7 @@
 package com.salesforce.mirus.offsets;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -19,13 +17,13 @@ import java.util.List;
 import java.util.concurrent.Future;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.storage.KafkaOffsetBackingStore;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class OffsetSetterTest {
 
   private OffsetSetter offsetSetter;
@@ -36,7 +34,7 @@ public class OffsetSetterTest {
 
   private JsonConverter converter;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     converter = new JsonConverter();
     converter.configure(Collections.singletonMap("schemas.enable", "false"), false);

@@ -9,19 +9,19 @@
 package com.salesforce.mirus;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.Arrays;
 import java.util.List;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class TopicPartitionSerDeTest {
 
   private List<TopicPartition> topicPartitionList;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     topicPartitionList =
         Arrays.asList(new TopicPartition("test", 0), new TopicPartition("test", 1));

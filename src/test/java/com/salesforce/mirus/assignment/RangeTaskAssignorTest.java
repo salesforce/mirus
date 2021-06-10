@@ -9,19 +9,19 @@
 package com.salesforce.mirus.assignment;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.Arrays;
 import java.util.List;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class RangeTaskAssignorTest {
 
   private SourceTaskAssignor sourceTaskAssignor;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     sourceTaskAssignor = new RangeTaskAssignor();
   }

@@ -9,10 +9,10 @@
 package com.salesforce.mirus;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.IsCollectionContaining.hasItem;
 import static org.hamcrest.core.IsNot.not;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -22,14 +22,14 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import org.apache.kafka.common.config.ConfigDef;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class MirusSourceConnectorTest {
 
   private MirusSourceConnector mirusSourceConnector;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     this.mirusSourceConnector = new MirusSourceConnector();
   }
@@ -38,8 +38,8 @@ public class MirusSourceConnectorTest {
   public void testVersionStringIsValid() {
     String version = mirusSourceConnector.version();
     assertTrue(
-        String.format("Version %s does not match", version),
-        version.matches("^\\d+\\.\\d+\\.\\d+.*$"));
+        version.matches("^\\d+\\.\\d+\\.\\d+.*$"),
+        String.format("Version %s does not match", version));
   }
 
   @Test

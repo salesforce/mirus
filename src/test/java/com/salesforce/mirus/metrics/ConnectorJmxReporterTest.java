@@ -8,7 +8,7 @@
 
 package com.salesforce.mirus.metrics;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -17,13 +17,13 @@ import org.apache.kafka.common.metrics.Metrics;
 import org.apache.kafka.connect.runtime.Herder;
 import org.apache.kafka.connect.runtime.rest.entities.ConnectorInfo;
 import org.apache.kafka.connect.runtime.rest.entities.ConnectorType;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class ConnectorJmxReporterTest {
 
   public static final String GROUP = "connector-metrics";
@@ -35,7 +35,7 @@ public class ConnectorJmxReporterTest {
   private Metrics metrics;
   private HashMap<String, String> tags;
 
-  @Before
+  @BeforeEach
   public void setUp() throws Exception {
     metrics = new Metrics();
     connectorInfo =
