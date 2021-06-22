@@ -27,6 +27,8 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.utils.SystemTime;
+import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -69,11 +71,15 @@ public class MirusSourceTask extends SourceTask {
   private HeaderConverter headerConverter;
   private ReplayPolicy replayPolicy;
   private long replayWindowRecords;
+  private long successfulCommitTime = Long.MAX_VALUE;
+  private long lastNewRecordTime = Long.MAX_VALUE;
 
   private final Map<TopicPartition, Long> latestOffsetMap = new HashMap<>();
   private final Set<TopicPartition> loggingFlags = new HashSet<>();
 
   protected AtomicBoolean shutDown = new AtomicBoolean(false);
+  protected Time time = new SystemTime();
+  private long commitFailureRestartMs;
 
   @SuppressWarnings("unused")
   public MirusSourceTask() {
@@ -107,6 +113,7 @@ public class MirusSourceTask extends SourceTask {
     this.destinationTopicNamePrefix = config.getDestinationTopicNamePrefix();
     this.destinationTopicNameSuffix = config.getDestinationTopicNameSuffix();
     this.enablePartitionMatching = config.getEnablePartitionMatching();
+    this.commitFailureRestartMs = config.getCommitFailureRestartMs();
 
     this.keyConverter = config.getKeyConverter();
     this.valueConverter = config.getValueConverter();
@@ -181,11 +188,17 @@ public class MirusSourceTask extends SourceTask {
 
     try {
       logger.trace("Calling poll");
+      checkCommitFailure();
       ConsumerRecords<byte[], byte[]> result = consumer.poll(consumerPollTimeoutMillis);
       logger.trace("Got {} records", result.count());
       if (!result.isEmpty()) {
+        lastNewRecordTime = time.milliseconds();
         return sourceRecords(result);
       } else {
+        // If no new data has arrived since last successful commit, move the effective commit time forward
+        if (lastNewRecordTime <= successfulCommitTime) {
+          successfulCommitTime = time.milliseconds();
+        }
         return Collections.emptyList();
       }
     } catch (WakeupException e) {
@@ -195,6 +208,23 @@ public class MirusSourceTask extends SourceTask {
 
     shutDownTask();
     return Collections.emptyList();
+  }
+
+  @Override
+  public void commit() {
+    successfulCommitTime = time.milliseconds();
+  }
+
+  private void checkCommitFailure() {
+    // if no success offset commit in an extensive period of time, restart task to reestablish Kafka
+    // connection
+    if (lastNewRecordTime - successfulCommitTime >= commitFailureRestartMs) {
+      throw new RuntimeException(
+          "Unable to commit offsets for more than "
+              + commitFailureRestartMs / 1000
+              + " seconds. "
+              + "Attempting to restart task.");
+    }
   }
 
   List<SourceRecord> sourceRecords(ConsumerRecords<byte[], byte[]> pollResult) {

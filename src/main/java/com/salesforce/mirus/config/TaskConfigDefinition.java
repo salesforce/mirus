@@ -29,7 +29,8 @@ public class TaskConfigDefinition {
           SourceConfigDefinition.ENABLE_PARTITION_MATCHING,
           SourceConfigDefinition.SOURCE_KEY_CONVERTER,
           SourceConfigDefinition.SOURCE_VALUE_CONVERTER,
-          SourceConfigDefinition.SOURCE_HEADER_CONVERTER);
+          SourceConfigDefinition.SOURCE_HEADER_CONVERTER,
+          SourceConfigDefinition.COMMIT_FAILURE_RESTART_MS);
 
   static ConfigDef configDef() {
     ConfigDef configDef = new ConfigDef();

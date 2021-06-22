@@ -8,19 +8,18 @@
 
 package com.salesforce.mirus.config;
 
+import static java.util.stream.Collectors.toList;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
-
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.runtime.ConnectorConfig;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.util.SimpleConfig;
-
-import static java.util.stream.Collectors.toList;
 
 public class SourceConfig {
 
@@ -114,7 +113,8 @@ public class SourceConfig {
   }
 
   private static List<Pattern> parseTopicsRegexList(List<String> topicsRegexList) {
-    return topicsRegexList.stream()
+    return topicsRegexList
+        .stream()
         .map(
             r -> {
               String regex;
