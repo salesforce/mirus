@@ -3,7 +3,7 @@
 
 set -e
 
-if [[ ! -z "$TRAVIS" && ! -z "$GPG_NAME" && ! -z "$GPG_EMAIL" ]]; then
+if [[ ! -z "$GPG_NAME" && ! -z "$GPG_EMAIL" ]]; then
 
     export GPG_PASSPHRASE=$(echo "$RANDOM$(date)" | md5sum | cut -d\  -f1)
 
@@ -32,6 +32,6 @@ if [[ ! -z "$TRAVIS" && ! -z "$GPG_NAME" && ! -z "$GPG_EMAIL" ]]; then
         gpg --keyserver keyserver.ubuntu.com  --recv-keys ${GPG_KEYNAME} && break || sleep 30
     done
 else
-    echo "The TRAVIS, GPG_NAME, and GPG_EMAIL env vars must be set"
+    echo "The GPG_NAME, and GPG_EMAIL env vars must be set"
     exit 1
 fi
