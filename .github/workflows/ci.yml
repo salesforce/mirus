@@ -26,7 +26,7 @@ jobs:
         distribution: 'zulu'
 
     - name: Build with Maven
-      run: mvn -B clean install --file pom.xml 
+      run: mvn package
   
 #   CodeQL:
 #     # CodeQL runs on ubuntu-latest and windows-latest
