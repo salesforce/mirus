@@ -24,18 +24,9 @@ jobs:
       with:
         java-version: ${{ matrix.java }}
         distribution: 'zulu'
-        server-username: MAVEN_USERNAME # env variable for username in deploy
-        server-password: MAVEN_CENTRAL_TOKEN # env variable for token in deploy
-        gpg-private-key: GPG_PRIVATE_KEY # env variable of the GPG private key to import
-        gpg-passphrase:  GPG_PASSPHRASE # env variable for GPG private key passphrase
 
     - name: Build with Maven
-      run: sh .gpg-generate.sh && mvn -B verify --file pom.xml 
-      env:
-        GPG_EMAIL: ${{ secrets.GPG_EMAIL }} # GPG_EMAIL
-        GPG_NAME:  ${{ secrets.GPG_NAME  }} # GPG_NAME
-        MAVEN_USERNAME:      ${{ secrets.MAVEN_CENTRAL_USER  }} # SONATYPE_USERNAME
-        MAVEN_CENTRAL_TOKEN: ${{ secrets.MAVEN_CENTRAL_TOKEN }} # SONATYPE_PASSWORD
+      run: mvn -B clean install --file pom.xml 
   
 #   CodeQL:
 #     # CodeQL runs on ubuntu-latest and windows-latest
