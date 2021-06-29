@@ -15,7 +15,7 @@ import org.apache.kafka.common.MetricNameTemplate;
 import org.apache.kafka.common.metrics.JmxReporter;
 import org.apache.kafka.common.metrics.Metrics;
 
-abstract class AbstractMirusJmxReporter {
+abstract class AbstractMirusJmxReporter implements AutoCloseable {
 
   static final String CONNECTOR_KEY = "connector";
   static final String TASK_KEY = "task";
@@ -33,4 +33,9 @@ abstract class AbstractMirusJmxReporter {
 
     return metrics.metricInstance(failedTaskCountTemplate, runtimeTags);
   }
+
+  @Override
+  public void close() {
+        metrics.close();
+    }
 }
