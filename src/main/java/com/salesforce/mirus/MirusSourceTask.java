@@ -71,8 +71,9 @@ public class MirusSourceTask extends SourceTask {
   private HeaderConverter headerConverter;
   private ReplayPolicy replayPolicy;
   private long replayWindowRecords;
-  private long successfulCommitTime = Long.MAX_VALUE;
-  private long lastNewRecordTime = Long.MAX_VALUE;
+  private static final long INITIAL_TIME = Long.MAX_VALUE;
+  private long successfulCommitTime = INITIAL_TIME;
+  private long lastNewRecordTime = INITIAL_TIME;
 
   private final Map<TopicPartition, Long> latestOffsetMap = new HashMap<>();
   private final Set<TopicPartition> loggingFlags = new HashSet<>();
@@ -195,8 +196,11 @@ public class MirusSourceTask extends SourceTask {
         lastNewRecordTime = time.milliseconds();
         return sourceRecords(result);
       } else {
-        // If no new data has arrived since last successful commit, move the effective commit time forward
-        if (lastNewRecordTime <= successfulCommitTime) {
+        // If no new data has arrived since last successful commit, move the effective commit time
+        // forward
+        if (lastNewRecordTime != INITIAL_TIME
+            && successfulCommitTime != INITIAL_TIME
+            && lastNewRecordTime <= successfulCommitTime) {
           successfulCommitTime = time.milliseconds();
         }
         return Collections.emptyList();
@@ -218,7 +222,8 @@ public class MirusSourceTask extends SourceTask {
   private void checkCommitFailure() {
     // if no success offset commit in an extensive period of time, restart task to reestablish Kafka
     // connection
-    if (lastNewRecordTime - successfulCommitTime >= commitFailureRestartMs) {
+    if (lastNewRecordTime != INITIAL_TIME
+        && lastNewRecordTime - successfulCommitTime >= commitFailureRestartMs) {
       throw new RuntimeException(
           "Unable to commit offsets for more than "
               + commitFailureRestartMs / 1000
