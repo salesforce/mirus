@@ -236,12 +236,8 @@ public class MirusSourceTask extends SourceTask {
       //
       // record.kafkaPartition() is null when 1:1 partition mapping is not enabled.
       //
-      try {
-        long latency = System.currentTimeMillis() - metadata.timestamp();
-        mirrorJmxReporter.recordMirrorLatency(record.topic(), latency);
-      } catch (Exception exception){
-        logger.error(exception.getMessage(), exception);
-      }
+      long latency = System.currentTimeMillis() - metadata.timestamp();
+      mirrorJmxReporter.recordMirrorLatency(record.topic(), latency);
   }
 
   private void checkCommitFailure() {
