@@ -214,9 +214,49 @@ As of version 0.2.0, destination topic checking can also support topic re-routin
 No other `Router` Transformations are supported, so destination topic checking must be disabled in order
 to use them.
 
+## Metrics
+
+Mirus produces some custom metrics in addition to the standard Kafka Connect metrics.
+
+JMX Queries are as follows
+
+### Latency (MirrorJmxReporter)
+
+```
+objectName="mirus:type=MirusSourceConnector,topic=*" attribute="replication-latency-ms-max"
+objectName="mirus:type=MirusSourceConnector,topic=*" attribute="replication-latency-ms-min"
+objectName="mirus:type=MirusSourceConnector,topic=*" attribute="replication-latency-ms-avg"
+objectName="mirus:type=MirusSourceConnector,topic=*" attribute="replication-latency-ms-count"
+```
+
+### Destination Information (MissingPartitionsJmxReporter)
+
+```
+objectName="mirus:type=mirus" attribute="missing-dest-partitions-count"
+```
+
+### Connector Metrics (ConnectorJmxReporter)
+
+```
+objectName="mirus:type=connector-metrics,connector=*" attribute="task-failed-restart-attempts-count"
+objectName="mirus:type=connector-metrics,connector=*" attribute="connector-failed-restart-attempts-count"
+objectName="mirus:type=connector-metrics,connector=*" attribute="failed-task-count"
+objectName="mirus:type=connector-metrics,connector=*" attribute="paused-task-count"
+objectName="mirus:type=connector-metrics,connector=*" attribute="destroyed-task-count"
+objectName="mirus:type=connector-metrics,connector=*" attribute="running-task-count"
+objectName="mirus:type=connector-metrics,connector=*" attribute="unassigned-task-count"
+```
+
+### Task Metrics (TaskJmxReporter)
+
+```
+objectName="mirus:type=connector-task-metrics,connector=*" attribute="task-failed-restart-attempts-count"
+```
+
 ## Developer Info
 
 To preform a release: `mvn release:prepare release:perform`
+GPG Keys may need to be passed to maven with `-Darguments='-Dgpg.passphrase= -Dgpg.keyname=55Z32RD1'`
 
 # Discussion
 

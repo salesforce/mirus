@@ -20,10 +20,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
+
+import com.salesforce.mirus.metrics.MirrorJmxReporter;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.header.Headers;
@@ -75,6 +78,9 @@ public class MirusSourceTask extends SourceTask {
   private long successfulCommitTime = INITIAL_TIME;
   private long lastNewRecordTime = INITIAL_TIME;
 
+  private MirrorJmxReporter mirrorJmxReporter;
+  private List<TopicPartition> topicPartitionList;
+
   private final Map<TopicPartition, Long> latestOffsetMap = new HashMap<>();
   private final Set<TopicPartition> loggingFlags = new HashSet<>();
 
@@ -122,18 +128,25 @@ public class MirusSourceTask extends SourceTask {
     this.replayPolicy = config.getReplayPolicy();
     this.replayWindowRecords = config.getReplayWindowRecords();
 
+    topicPartitionList = TopicPartitionSerDe.parseTopicPartitionList(
+            config.getInternalTaskPartitions()
+    );
+    this.mirrorJmxReporter = MirrorJmxReporter.getInstance();
+    this.mirrorJmxReporter.addTopics(topicPartitionList);
+
     logger.debug("Task starting with partitions: {}", config.getInternalTaskPartitions());
 
     this.consumer = consumerFactory.newConsumer(consumerProperties);
-    List<TopicPartition> partitionIds =
-        TopicPartitionSerDe.parseTopicPartitionList(config.getInternalTaskPartitions());
-    this.consumer.assign(partitionIds);
-    seekToOffsets(partitionIds);
+    this.consumer.assign(topicPartitionList);
+    seekToOffsets(topicPartitionList);
     shutDown.set(false);
   }
 
   @Override
   public void stop() {
+    if (null != mirrorJmxReporter) {
+      mirrorJmxReporter.removeTopics(topicPartitionList);
+    }
     if (shutDown != null) {
       shutDown.set(true);
       consumer.wakeup();
@@ -217,6 +230,18 @@ public class MirusSourceTask extends SourceTask {
   @Override
   public void commit() {
     successfulCommitTime = time.milliseconds();
+  }
+
+  /**
+   * Callback that is called when a record is committed.
+   */
+  @Override
+  public void commitRecord(SourceRecord record, RecordMetadata metadata) {
+      //
+      // record.kafkaPartition() is null when 1:1 partition mapping is not enabled.
+      //
+      long latency = System.currentTimeMillis() - metadata.timestamp();
+      mirrorJmxReporter.recordMirrorLatency(record.topic(), latency);
   }
 
   private void checkCommitFailure() {
