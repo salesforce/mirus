@@ -52,7 +52,23 @@ public class TaskJmxReporter extends AbstractMirusJmxReporter {
     updateTaskMetrics(taskId, taskStatus);
   }
 
+  public synchronized void closeTask(ConnectorTaskId taskId) {
+    metrics.removeSensor(taskId.toString());
+    metrics.removeMetric(getMetricName(taskId));
+  }
+
   private void ensureMetricsCreated(ConnectorTaskId taskId) {
+    MetricName taskMetric = getMetricName(taskId);
+
+    if (!metrics.metrics().containsKey(taskMetric)) {
+      Sensor sensor = getSensor(taskId.toString());
+      sensor.add(taskMetric, new Total());
+      logger.info("Added the task {} to the list of JMX metrics", taskId);
+      logger.debug("Updated set of JMX metrics is {}", metrics.metrics());
+    }
+  }
+
+  private MetricName getMetricName(ConnectorTaskId taskId) {
     Map<String, String> tags = getTaskLevelTags(taskId);
     MetricName taskMetric =
         getMetric(
@@ -61,13 +77,7 @@ public class TaskJmxReporter extends AbstractMirusJmxReporter {
             "count of restart attempts to a failed task",
             taskLevelJmxTags,
             tags);
-
-    if (!metrics.metrics().containsKey(taskMetric)) {
-      Sensor sensor = getSensor(taskId.toString());
-      sensor.add(taskMetric, new Total());
-      logger.info("Added the task {} to the list of JMX metrics", taskId);
-      logger.debug("Updated set of JMX metrics is {}", metrics.metrics());
-    }
+    return taskMetric;
   }
 
   private Map<String, String> getTaskLevelTags(ConnectorTaskId taskId) {

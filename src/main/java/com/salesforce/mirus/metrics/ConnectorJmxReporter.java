@@ -8,8 +8,10 @@
 
 package com.salesforce.mirus.metrics;
 
+import com.google.common.collect.Sets;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -38,6 +40,8 @@ public class ConnectorJmxReporter extends AbstractMirusJmxReporter {
 
   private final Set<String> connectorLevelJmxTags = new LinkedHashSet<>();
   private final Map<String, String> allStates = new HashMap<>();
+  private final Map<String, Set<MetricName>> connectorMetrics = new HashMap<>();
+  private final Map<String, Set<String>> connectorSensors = new HashMap<>();
 
   public ConnectorJmxReporter() {
     this(new Metrics());
@@ -128,6 +132,7 @@ public class ConnectorJmxReporter extends AbstractMirusJmxReporter {
             connectorLevelJmxTags,
             connectorTags);
 
+    // Won't reset this metric when connector restart
     MetricName restartAttemptsPerConnectorMetric =
         getMetric(
             FAILED_CONNECTOR_ATTEMPTS_METRIC_NAME + "-count",
@@ -136,54 +141,74 @@ public class ConnectorJmxReporter extends AbstractMirusJmxReporter {
             connectorLevelJmxTags,
             connectorTags);
 
+    Set<MetricName> metricsSet =
+        Sets.newHashSet(
+            runningMetric,
+            pausedMetric,
+            failedMetric,
+            unassignedMetric,
+            destroyedMetric,
+            totalAttemptsPerConnectorMetric);
+    connectorMetrics.put(connectorName, metricsSet);
+
+    Set<String> sensorSet = new HashSet<>();
     if (!metrics.metrics().containsKey(runningMetric)) {
-      metrics
-          .sensor(calculateSensorName(allStates.get("RUNNING"), connectorName))
-          .add(runningMetric, new Value());
+      String sensorName = calculateSensorName(allStates.get("RUNNING"), connectorName);
+      metrics.sensor(sensorName).add(runningMetric, new Value());
+      sensorSet.add(sensorName);
     }
     if (!metrics.metrics().containsKey(pausedMetric)) {
-      metrics
-          .sensor(calculateSensorName(allStates.get("PAUSED"), connectorName))
-          .add(pausedMetric, new Value());
+      String sensorName = calculateSensorName(allStates.get("PAUSED"), connectorName);
+      metrics.sensor(sensorName).add(pausedMetric, new Value());
+      sensorSet.add(sensorName);
     }
 
     if (!metrics.metrics().containsKey(failedMetric)) {
-      metrics
-          .sensor(calculateSensorName(allStates.get("FAILED"), connectorName))
-          .add(failedMetric, new Value());
+      String sensorName = calculateSensorName(allStates.get("FAILED"), connectorName);
+      metrics.sensor(sensorName).add(failedMetric, new Value());
+      sensorSet.add(sensorName);
     }
     if (!metrics.metrics().containsKey(unassignedMetric)) {
-      metrics
-          .sensor(calculateSensorName(allStates.get("UNASSIGNED"), connectorName))
-          .add(unassignedMetric, new Value());
+      String sensorName = calculateSensorName(allStates.get("UNASSIGNED"), connectorName);
+      metrics.sensor(sensorName).add(unassignedMetric, new Value());
+      sensorSet.add(sensorName);
     }
     if (!metrics.metrics().containsKey(destroyedMetric)) {
-      metrics
-          .sensor(calculateSensorName(allStates.get("DESTROYED"), connectorName))
-          .add(destroyedMetric, new Value());
+      String sensorName = calculateSensorName(allStates.get("DESTROYED"), connectorName);
+      metrics.sensor(sensorName).add(destroyedMetric, new Value());
+      sensorSet.add(sensorName);
     }
     if (!metrics.metrics().containsKey(totalAttemptsPerConnectorMetric)) {
-      metrics
-          .sensor(FAILED_TASK_ATTEMPTS_METRIC_NAME + connectorName)
-          .add(totalAttemptsPerConnectorMetric, new Total());
+      String sensorName = FAILED_TASK_ATTEMPTS_METRIC_NAME + connectorName;
+      metrics.sensor(sensorName).add(totalAttemptsPerConnectorMetric, new Total());
+      sensorSet.add(sensorName);
     }
 
     if (!metrics.metrics().containsKey(restartAttemptsPerConnectorMetric)) {
-      metrics
-          .sensor(FAILED_CONNECTOR_ATTEMPTS_METRIC_NAME + connectorName)
-          .add(restartAttemptsPerConnectorMetric, new Total());
+      String sensorName = FAILED_CONNECTOR_ATTEMPTS_METRIC_NAME + connectorName;
+      metrics.sensor(sensorName).add(restartAttemptsPerConnectorMetric, new Total());
+
+      // Won't reset this metric when connector restart
     }
+
+    connectorSensors.put(connectorName, sensorSet);
   }
 
   public void incrementTotalFailedCount(String connector) {
-    metrics
-        .sensor(FAILED_TASK_ATTEMPTS_METRIC_NAME + connector)
-        .record(1, Time.SYSTEM.milliseconds());
+    String sensorName = FAILED_TASK_ATTEMPTS_METRIC_NAME + connector;
+    metrics.sensor(sensorName).record(1, Time.SYSTEM.milliseconds());
   }
 
   public void incrementConnectorRestartAttempts(String connector) {
-    metrics
-        .sensor(FAILED_CONNECTOR_ATTEMPTS_METRIC_NAME + connector)
-        .record(1, Time.SYSTEM.milliseconds());
+    String sensorName = FAILED_CONNECTOR_ATTEMPTS_METRIC_NAME + connector;
+    metrics.sensor(sensorName).record(1, Time.SYSTEM.milliseconds());
+  }
+
+  public synchronized void closeConnector(String connector) {
+    connectorSensors.get(connector).forEach(sensor -> metrics.removeSensor(sensor));
+    connectorSensors.remove(connector);
+
+    connectorMetrics.get(connector).forEach(MetricName -> metrics.removeMetric(MetricName));
+    connectorMetrics.remove(connector);
   }
 }
