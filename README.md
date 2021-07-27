@@ -195,6 +195,7 @@ created by Mirus Tasks can be configured using a `consumer.` prefix on the stand
 KafkaProducer options are configured in the Mirus Worker Properties file (see below). The
   `destination.consumer.`prefix can be used to override the properties of the KafkaConsumer that connects to
    the destination Kafka cluster.
+Unlike the default Kafka Consumer which has `auto.offset.reset` configured to `latest`, Mirus will by default configure consumer to `earliest` to minimize the possible data loss and ensure high-reliability.
 
 - [Mirus Worker Properties](src/main/java/com/salesforce/mirus/config/MirusConfigDefinition.java)
 These are Mirus extensions to the Kafka Connect configuration, and should be applied to the
