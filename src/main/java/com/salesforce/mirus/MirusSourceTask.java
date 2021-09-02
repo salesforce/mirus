@@ -121,9 +121,8 @@ public class MirusSourceTask extends SourceTask {
     this.replayPolicy = config.getReplayPolicy();
     this.replayWindowRecords = config.getReplayWindowRecords();
 
-    topicPartitionList = TopicPartitionSerDe.parseTopicPartitionList(
-            config.getInternalTaskPartitions()
-    );
+    topicPartitionList =
+        TopicPartitionSerDe.parseTopicPartitionList(config.getInternalTaskPartitions());
     this.mirrorJmxReporter = MirrorJmxReporter.getInstance();
     this.mirrorJmxReporter.addTopics(topicPartitionList);
 
@@ -225,16 +224,14 @@ public class MirusSourceTask extends SourceTask {
     successfulCommitTime = time.milliseconds();
   }
 
-  /**
-   * Callback that is called when a record is committed.
-   */
+  /** Callback that is called when a record is committed. */
   @Override
   public void commitRecord(SourceRecord sourceRecord, RecordMetadata metadata) {
-      //
-      // record.kafkaPartition() is null when 1:1 partition mapping is not enabled.
-      //
-      long latency = System.currentTimeMillis() - sourceRecord.timestamp();
-      mirrorJmxReporter.recordMirrorLatency(sourceRecord.topic(), latency);
+    //
+    // record.kafkaPartition() is null when 1:1 partition mapping is not enabled.
+    //
+    long latency = System.currentTimeMillis() - sourceRecord.timestamp();
+    mirrorJmxReporter.recordMirrorLatency(sourceRecord.topic(), latency);
   }
 
   private void checkCommitFailure() {
