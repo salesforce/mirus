@@ -42,6 +42,7 @@ import org.apache.kafka.connect.storage.KafkaOffsetBackingStore;
 import org.apache.kafka.connect.storage.KafkaStatusBackingStore;
 import org.apache.kafka.connect.storage.StatusBackingStore;
 import org.apache.kafka.connect.util.ConnectUtils;
+import org.apache.kafka.connect.util.SharedTopicAdmin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -155,8 +156,11 @@ public class Mirus {
 
     URI advertisedUrl = rest.advertisedUrl();
     String workerId = advertisedUrl.getHost() + ":" + advertisedUrl.getPort();
-
-    KafkaOffsetBackingStore offsetBackingStore = new KafkaOffsetBackingStore();
+    // Create the admin client to be shared by all backing stores for this herder
+    Map<String, Object> adminProps = new HashMap<>(workerProps);
+    ConnectUtils.addMetricsContextProperties(adminProps, distributedConfig, kafkaClusterId);
+    SharedTopicAdmin sharedAdmin = new SharedTopicAdmin(adminProps);
+    KafkaOffsetBackingStore offsetBackingStore = new KafkaOffsetBackingStore(sharedAdmin);
     offsetBackingStore.configure(configWithClientIdSuffix(workerProps, "offset"));
 
     WorkerConfig workerConfigs = configWithClientIdSuffix(workerProps, "worker");
@@ -180,14 +184,15 @@ public class Mirus {
 
     Converter internalValueConverter = worker.getInternalValueConverter();
     StatusBackingStore statusBackingStore =
-        new KafkaStatusBackingStore(time, internalValueConverter);
+        new KafkaStatusBackingStore(time, internalValueConverter, sharedAdmin);
     statusBackingStore.configure(configWithClientIdSuffix(workerProps, "status"));
 
     ConfigBackingStore configBackingStore =
         new KafkaConfigBackingStore(
             internalValueConverter,
             configWithClientIdSuffix(workerProps, "config"),
-            configTransformer);
+            configTransformer,
+            sharedAdmin);
 
     DistributedHerder herder =
         new DistributedHerder(
@@ -198,7 +203,8 @@ public class Mirus {
             statusBackingStore,
             configBackingStore,
             advertisedUrl.toString(),
-            connectorClientConfigOverridePolicy);
+            connectorClientConfigOverridePolicy,
+            sharedAdmin);
 
     // Initialize HerderStatusMonitor
     boolean autoStartTasks = mirusConfig.getTaskAutoRestart();

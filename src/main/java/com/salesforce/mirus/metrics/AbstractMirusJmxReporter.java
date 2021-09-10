@@ -36,6 +36,6 @@ abstract class AbstractMirusJmxReporter implements AutoCloseable {
 
   @Override
   public void close() {
-        metrics.close();
-    }
+    metrics.close();
+  }
 }
