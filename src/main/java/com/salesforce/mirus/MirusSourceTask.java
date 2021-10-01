@@ -133,7 +133,7 @@ public class MirusSourceTask extends SourceTask {
     this.consumer = consumerFactory.newConsumer(consumerProperties);
     this.consumer.assign(topicPartitionList);
     seekToOffsets(topicPartitionList);
-    consumerAccess = new Semaphore(1);  // let one thread at a time access the consumer
+    consumerAccess = new Semaphore(1); // let one thread at a time access the consumer
     shutDown.set(false);
   }
 
@@ -151,7 +151,8 @@ public class MirusSourceTask extends SourceTask {
 
     Utils.closeQuietly(consumer, "source consumer");
     Utils.closeQuietly(mirrorJmxReporter, "metrics");
-    logger.info("Stopping {} took {} ms.", Thread.currentThread().getName(), time.milliseconds() - start);
+    logger.info(
+        "Stopping {} took {} ms.", Thread.currentThread().getName(), time.milliseconds() - start);
   }
 
   private void seekToOffsets(List<TopicPartition> partitionIds) {
@@ -223,10 +224,10 @@ public class MirusSourceTask extends SourceTask {
     } catch (WakeupException e) {
       // task is stopping
       return Collections.emptyList();
-    } catch (Throwable e)  {
+    } catch (Throwable e) {
       logger.error("Poll failure.", e);
       throw e;
-    } finally{
+    } finally {
       consumerAccess.release();
     }
   }
