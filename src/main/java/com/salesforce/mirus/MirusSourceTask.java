@@ -12,6 +12,7 @@ import com.salesforce.mirus.config.TaskConfig;
 import com.salesforce.mirus.config.TaskConfig.ReplayPolicy;
 import com.salesforce.mirus.metrics.MirrorJmxReporter;
 import java.util.*;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -24,6 +25,7 @@ import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.utils.SystemTime;
 import org.apache.kafka.common.utils.Time;
+import org.apache.kafka.common.utils.Utils;
 import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -79,6 +81,7 @@ public class MirusSourceTask extends SourceTask {
   protected AtomicBoolean shutDown = new AtomicBoolean(false);
   protected Time time = new SystemTime();
   private long commitFailureRestartMs;
+  private Semaphore consumerAccess;
 
   @SuppressWarnings("unused")
   public MirusSourceTask() {
@@ -130,23 +133,25 @@ public class MirusSourceTask extends SourceTask {
     this.consumer = consumerFactory.newConsumer(consumerProperties);
     this.consumer.assign(topicPartitionList);
     seekToOffsets(topicPartitionList);
+    consumerAccess = new Semaphore(1);  // let one thread at a time access the consumer
     shutDown.set(false);
   }
 
   @Override
   public void stop() {
-    if (null != mirrorJmxReporter) {
-      mirrorJmxReporter.removeTopics(topicPartitionList);
-    }
-    if (shutDown != null) {
-      shutDown.set(true);
-      consumer.wakeup();
-    }
-  }
+    long start = time.milliseconds();
+    shutDown.set(true);
+    consumer.wakeup();
 
-  protected void shutDownTask() {
-    logger.debug("Task shutting down");
-    consumer.close();
+    try {
+      consumerAccess.acquire();
+    } catch (InterruptedException e) {
+      logger.warn("Interrupted waiting for access to consumer. Will try closing anyway.");
+    }
+
+    Utils.closeQuietly(consumer, "source consumer");
+    Utils.closeQuietly(mirrorJmxReporter, "metrics");
+    logger.info("Stopping {} took {} ms.", Thread.currentThread().getName(), time.milliseconds() - start);
   }
 
   private void seekToOffsets(List<TopicPartition> partitionIds) {
@@ -190,9 +195,15 @@ public class MirusSourceTask extends SourceTask {
 
   @Override
   public List<SourceRecord> poll() {
-
     try {
       logger.trace("Calling poll");
+      if (!consumerAccess.tryAcquire()) {
+        return Collections.emptyList();
+      }
+      if (shutDown.get()) {
+        return Collections.emptyList();
+      }
+
       checkCommitFailure();
       ConsumerRecords<byte[], byte[]> result = consumer.poll(consumerPollTimeoutMillis);
       logger.trace("Got {} records", result.count());
@@ -210,12 +221,14 @@ public class MirusSourceTask extends SourceTask {
         return Collections.emptyList();
       }
     } catch (WakeupException e) {
-      // Ignore exception iff shutting down thread.
-      if (!shutDown.get()) throw e;
+      // task is stopping
+      return Collections.emptyList();
+    } catch (Throwable e)  {
+      logger.error("Poll failure.", e);
+      throw e;
+    } finally{
+      consumerAccess.release();
     }
-
-    shutDownTask();
-    return Collections.emptyList();
   }
 
   @Override
@@ -238,6 +251,7 @@ public class MirusSourceTask extends SourceTask {
     // connection
     if (lastNewRecordTime != INITIAL_TIME
         && lastNewRecordTime - successfulCommitTime >= commitFailureRestartMs) {
+      logger.error("Commit offsets failed for {}ms", (lastNewRecordTime - successfulCommitTime));
       throw new RuntimeException(
           "Unable to commit offsets for more than "
               + commitFailureRestartMs / 1000
