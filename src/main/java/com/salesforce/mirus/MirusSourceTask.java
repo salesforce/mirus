@@ -140,6 +140,9 @@ public class MirusSourceTask extends SourceTask {
   @Override
   public void stop() {
     long start = time.milliseconds();
+    if (null != mirrorJmxReporter) {
+      mirrorJmxReporter.removeTopics(topicPartitionList);
+    }
     shutDown.set(true);
     consumer.wakeup();
 
@@ -150,7 +153,6 @@ public class MirusSourceTask extends SourceTask {
     }
 
     Utils.closeQuietly(consumer, "source consumer");
-    Utils.closeQuietly(mirrorJmxReporter, "metrics");
     logger.info(
         "Stopping {} took {} ms.", Thread.currentThread().getName(), time.milliseconds() - start);
   }
