@@ -12,7 +12,6 @@ import com.salesforce.mirus.config.TaskConfig;
 import com.salesforce.mirus.config.TaskConfig.ReplayPolicy;
 import com.salesforce.mirus.metrics.MirrorJmxReporter;
 import java.util.*;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -81,7 +80,6 @@ public class MirusSourceTask extends SourceTask {
   protected AtomicBoolean shutDown = new AtomicBoolean(false);
   protected Time time = new SystemTime();
   private long commitFailureRestartMs;
-  private Semaphore consumerAccess;
 
   @SuppressWarnings("unused")
   public MirusSourceTask() {
@@ -133,23 +131,16 @@ public class MirusSourceTask extends SourceTask {
     this.consumer = consumerFactory.newConsumer(consumerProperties);
     this.consumer.assign(topicPartitionList);
     seekToOffsets(topicPartitionList);
-    consumerAccess = new Semaphore(1); // let one thread at a time access the consumer
     shutDown.set(false);
   }
 
   @Override
-  public void stop() {
+  public synchronized void stop() {
     long start = time.milliseconds();
-    if (null != mirrorJmxReporter) {
-      mirrorJmxReporter.removeTopics(topicPartitionList);
-    }
     shutDown.set(true);
     consumer.wakeup();
-
-    try {
-      consumerAccess.acquire();
-    } catch (InterruptedException e) {
-      logger.warn("Interrupted waiting for access to consumer. Will try closing anyway.");
+    if (null != mirrorJmxReporter) {
+      mirrorJmxReporter.removeTopics(topicPartitionList);
     }
 
     Utils.closeQuietly(consumer, "source consumer");
@@ -200,9 +191,6 @@ public class MirusSourceTask extends SourceTask {
   public List<SourceRecord> poll() {
     try {
       logger.trace("Calling poll");
-      if (!consumerAccess.tryAcquire()) {
-        return Collections.emptyList();
-      }
       if (shutDown.get()) {
         return Collections.emptyList();
       }
@@ -229,8 +217,6 @@ public class MirusSourceTask extends SourceTask {
     } catch (Throwable e) {
       logger.error("Poll failure.", e);
       throw e;
-    } finally {
-      consumerAccess.release();
     }
   }
 
