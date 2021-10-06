@@ -13,7 +13,10 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.salesforce.mirus.config.SourceConfigDefinition;
@@ -31,10 +34,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.MockConsumer;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
+import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Headers;
@@ -441,5 +446,45 @@ public class MirusSourceTaskTest {
 
     // check commit failure
     mirusSourceTask.poll();
+  }
+
+  @Test(expected = KafkaException.class)
+  public void testConsumerClosedOnException() {
+    Consumer localConsumer = mock(Consumer.class);
+    when(localConsumer.poll(eq(1000L))).thenThrow(new KafkaException("Exception in poll"));
+    MirusSourceTask mirusSourceTask = new MirusSourceTask(consumerProperties -> localConsumer);
+    SourceTaskContext context =
+        new SourceTaskContext() {
+          @Override
+          public Map<String, String> configs() {
+            return null;
+          }
+
+          @Override
+          public OffsetStorageReader offsetStorageReader() {
+            return new OffsetStorageReader() {
+              @Override
+              public <T> Map<String, Object> offset(Map<String, T> partition) {
+                return new HashMap<>(MirusSourceTask.offsetMap(0L));
+              }
+
+              @Override
+              public <T> Map<Map<String, T>, Map<String, Object>> offsets(
+                  Collection<Map<String, T>> partitions) {
+                return partitions.stream().collect(Collectors.toMap(p -> p, this::offset));
+              }
+            };
+          }
+        };
+    mirusSourceTask.initialize(context);
+    mirusSourceTask.start(mockTaskProperties());
+
+    // Mimic behaviour of WorkerSourceTask.execute()
+    try {
+      mirusSourceTask.poll();
+    } finally {
+      mirusSourceTask.stop();
+      verify(localConsumer, times(1)).close();
+    }
   }
 }
