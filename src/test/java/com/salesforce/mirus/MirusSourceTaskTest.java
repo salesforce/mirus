@@ -13,7 +13,10 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.salesforce.mirus.config.SourceConfigDefinition;
@@ -31,10 +34,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.MockConsumer;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
+import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Headers;
@@ -56,6 +61,7 @@ public class MirusSourceTaskTest {
   private static final String TOPIC = "topic1";
   private MirusSourceTask mirusSourceTask;
   private MockConsumer<byte[], byte[]> mockConsumer;
+  private SourceTaskContext context;
 
   @Before
   public void setUp() {
@@ -68,7 +74,7 @@ public class MirusSourceTaskTest {
     mirusSourceTask = new MirusSourceTask(consumerProperties -> mockConsumer);
 
     // Always return offset = 0
-    SourceTaskContext context =
+    context =
         new SourceTaskContext() {
           @Override
           public Map<String, String> configs() {
@@ -441,5 +447,22 @@ public class MirusSourceTaskTest {
 
     // check commit failure
     mirusSourceTask.poll();
+  }
+
+  @Test(expected = KafkaException.class)
+  public void testConsumerClosedOnException() {
+    Consumer localConsumer = mock(Consumer.class);
+    when(localConsumer.poll(eq(1000L))).thenThrow(new KafkaException("Exception in poll"));
+    MirusSourceTask mirusSourceTask = new MirusSourceTask(consumerProperties -> localConsumer);
+    mirusSourceTask.initialize(context);
+    mirusSourceTask.start(mockTaskProperties());
+
+    // Mimic behaviour of WorkerSourceTask.execute()
+    try {
+      mirusSourceTask.poll();
+    } finally {
+      mirusSourceTask.stop();
+      verify(localConsumer, times(1)).close();
+    }
   }
 }
