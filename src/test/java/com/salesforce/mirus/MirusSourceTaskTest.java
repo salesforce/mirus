@@ -61,6 +61,7 @@ public class MirusSourceTaskTest {
   private static final String TOPIC = "topic1";
   private MirusSourceTask mirusSourceTask;
   private MockConsumer<byte[], byte[]> mockConsumer;
+  private SourceTaskContext context;
 
   @Before
   public void setUp() {
@@ -73,7 +74,7 @@ public class MirusSourceTaskTest {
     mirusSourceTask = new MirusSourceTask(consumerProperties -> mockConsumer);
 
     // Always return offset = 0
-    SourceTaskContext context =
+    context =
         new SourceTaskContext() {
           @Override
           public Map<String, String> configs() {
@@ -453,29 +454,6 @@ public class MirusSourceTaskTest {
     Consumer localConsumer = mock(Consumer.class);
     when(localConsumer.poll(eq(1000L))).thenThrow(new KafkaException("Exception in poll"));
     MirusSourceTask mirusSourceTask = new MirusSourceTask(consumerProperties -> localConsumer);
-    SourceTaskContext context =
-        new SourceTaskContext() {
-          @Override
-          public Map<String, String> configs() {
-            return null;
-          }
-
-          @Override
-          public OffsetStorageReader offsetStorageReader() {
-            return new OffsetStorageReader() {
-              @Override
-              public <T> Map<String, Object> offset(Map<String, T> partition) {
-                return new HashMap<>(MirusSourceTask.offsetMap(0L));
-              }
-
-              @Override
-              public <T> Map<Map<String, T>, Map<String, Object>> offsets(
-                  Collection<Map<String, T>> partitions) {
-                return partitions.stream().collect(Collectors.toMap(p -> p, this::offset));
-              }
-            };
-          }
-        };
     mirusSourceTask.initialize(context);
     mirusSourceTask.start(mockTaskProperties());
 
