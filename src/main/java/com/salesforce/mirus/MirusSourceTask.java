@@ -235,7 +235,7 @@ public class MirusSourceTask extends SourceTask {
     mirrorJmxReporter.recordMirrorLatency(sourceRecord.topic(), latency);
   }
 
-  private void checkCommitFailure() {
+  protected void checkCommitFailure() {
     // if no success offset commit in an extensive period of time, restart task to reestablish Kafka
     // connection
     if (lastNewRecordTime != INITIAL_TIME
