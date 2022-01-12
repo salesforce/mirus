@@ -253,7 +253,9 @@ public class MirusSourceTask extends SourceTask {
     List<SourceRecord> sourceRecords = new ArrayList<>(pollResult.count());
     pollResult.forEach(
         consumerRecord -> {
-          if (replayPolicy == ReplayPolicy.FILTER && !isSkippedRecord(consumerRecord)) {
+          if (replayPolicy == ReplayPolicy.FILTER && isSkippedRecord(consumerRecord)) {
+            // Skipping duplicate record
+          } else {
             sourceRecords.add(toSourceRecord(consumerRecord));
           }
         });
