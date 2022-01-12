@@ -98,17 +98,17 @@ public class MirusSourceTaskTest {
           }
         };
     mirusSourceTask.initialize(context);
-    mirusSourceTask.start(mockTaskProperties());
+    mirusSourceTask.start(mockTaskProperties(ReplayPolicy.FILTER));
   }
 
-  private Map<String, String> mockTaskProperties() {
+  private Map<String, String> mockTaskProperties(ReplayPolicy replayPolicy) {
     Map<String, String> properties = new HashMap<>();
     List<TopicPartition> topicPartitionList = new ArrayList<>();
     topicPartitionList.add(new TopicPartition(TOPIC, 0));
     topicPartitionList.add(new TopicPartition(TOPIC, 1));
     properties.put(
         TaskConfigDefinition.PARTITION_LIST, TopicPartitionSerDe.toJson(topicPartitionList));
-    properties.put(TaskConfigDefinition.REPLAY_POLICY, ReplayPolicy.FILTER.toString());
+    properties.put(TaskConfigDefinition.REPLAY_POLICY, replayPolicy.toString());
     properties.put(TaskConfigDefinition.REPLAY_WINDOW_RECORDS, "0");
     return properties;
   }
@@ -186,7 +186,7 @@ public class MirusSourceTaskTest {
     final int offset = 123;
     final long timestamp = 314159;
 
-    Map<String, String> properties = mockTaskProperties();
+    Map<String, String> properties = mockTaskProperties(ReplayPolicy.FILTER);
     properties.put(
         SourceConfigDefinition.SOURCE_HEADER_CONVERTER.getKey(),
         "org.apache.kafka.connect.json.JsonConverter");
@@ -251,7 +251,7 @@ public class MirusSourceTaskTest {
 
   @Test
   public void testJsonConverterRecord() {
-    Map<String, String> properties = mockTaskProperties();
+    Map<String, String> properties = mockTaskProperties(ReplayPolicy.FILTER);
     properties.put(
         SourceConfigDefinition.SOURCE_KEY_CONVERTER.getKey(),
         "org.apache.kafka.connect.json.JsonConverter");
@@ -306,6 +306,31 @@ public class MirusSourceTaskTest {
   }
 
   @Test
+  public void testReplayFilterIgnoreOnePartition() {
+    mirusSourceTask.start(mockTaskProperties(ReplayPolicy.IGNORE));
+
+    mockConsumer.updateBeginningOffsets(Collections.singletonMap(new TopicPartition(TOPIC, 0), 0L));
+
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 0, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 1, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 2, new byte[] {}, new byte[] {}));
+    List<SourceRecord> result = mirusSourceTask.poll();
+    assertThat(result.size(), is(3));
+
+    // Simulate an offset reset
+    mockConsumer.seekToBeginning(Collections.singletonList(new TopicPartition(TOPIC, 0)));
+
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 0, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 1, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 2, new byte[] {}, new byte[] {}));
+    mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 3, new byte[] {}, new byte[] {}));
+    result = mirusSourceTask.poll();
+
+    assertThat(result.size(), is(4));
+    assertThat(result.get(0).sourceOffset().get(MirusSourceTask.KEY_OFFSET), is(1L));
+  }
+
+  @Test
   public void testReplayFilterTwoPartitions() {
 
     Map<TopicPartition, Long> initialOffsets = new HashMap<>();
@@ -341,7 +366,7 @@ public class MirusSourceTaskTest {
   @Test
   public void testReplayFilterWindow() {
 
-    Map<String, String> properties = mockTaskProperties();
+    Map<String, String> properties = mockTaskProperties(ReplayPolicy.FILTER);
     properties.put(TaskConfigDefinition.REPLAY_WINDOW_RECORDS, "2");
     mirusSourceTask.start(properties);
 
@@ -380,7 +405,7 @@ public class MirusSourceTaskTest {
     mirusSourceTask.commit();
 
     // poll success but commit failed
-    TaskConfig config = new TaskConfig(mockTaskProperties());
+    TaskConfig config = new TaskConfig(mockTaskProperties(ReplayPolicy.IGNORE));
     long elapseTime = config.getCommitFailureRestartMs() / 2;
     when(mockTime.milliseconds()).thenReturn(currentMillis + elapseTime);
     mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 1, new byte[] {}, new byte[] {}));
@@ -410,7 +435,7 @@ public class MirusSourceTaskTest {
     mirusSourceTask.commit();
 
     // poll success but commit failed
-    TaskConfig config = new TaskConfig(mockTaskProperties());
+    TaskConfig config = new TaskConfig(mockTaskProperties(ReplayPolicy.IGNORE));
     long elapseTime = config.getCommitFailureRestartMs() - 10;
     when(mockTime.milliseconds()).thenReturn(currentMillis + elapseTime);
     mockConsumer.addRecord(new ConsumerRecord<>(TOPIC, 0, 1, new byte[] {}, new byte[] {}));
@@ -435,7 +460,7 @@ public class MirusSourceTaskTest {
     mirusSourceTask.commit();
 
     // poll success but commit failed
-    TaskConfig config = new TaskConfig(mockTaskProperties());
+    TaskConfig config = new TaskConfig(mockTaskProperties(ReplayPolicy.IGNORE));
     // no new data
     long elapseTime = config.getCommitFailureRestartMs() + 10;
     when(mockTime.milliseconds()).thenReturn(currentMillis + elapseTime);
@@ -455,7 +480,7 @@ public class MirusSourceTaskTest {
     when(localConsumer.poll(eq(1000L))).thenThrow(new KafkaException("Exception in poll"));
     MirusSourceTask mirusSourceTask = new MirusSourceTask(consumerProperties -> localConsumer);
     mirusSourceTask.initialize(context);
-    mirusSourceTask.start(mockTaskProperties());
+    mirusSourceTask.start(mockTaskProperties(ReplayPolicy.IGNORE));
 
     // Mimic behaviour of WorkerSourceTask.execute()
     try {
