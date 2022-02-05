@@ -17,18 +17,20 @@ public class MirrorJmxReporter extends AbstractMirusJmxReporter {
 
   private static final Logger logger = LoggerFactory.getLogger(MirrorJmxReporter.class);
 
-  public static Map<Integer, String> LATENCY_BUCKETS =
+  public static final Map<Long, String> LATENCY_BUCKETS =
       Map.of(
-          0,
+          TimeUnit.MINUTES.toMillis(0),
           "0m",
-          5 * 60 * 1000,
+          TimeUnit.MINUTES.toMillis(5),
           "5m",
-          10 * 60 * 1000,
+          TimeUnit.MINUTES.toMillis(10),
           "10m",
-          30 * 60 * 1000,
+          TimeUnit.MINUTES.toMillis(30),
           "30m",
-          60 * 60 * 1000,
-          "60m");
+          TimeUnit.MINUTES.toMillis(60),
+          "60m",
+          TimeUnit.HOURS.toMillis(12),
+          "12h");
 
   private static MirrorJmxReporter instance = null;
 
@@ -54,7 +56,7 @@ public class MirrorJmxReporter extends AbstractMirusJmxReporter {
           "replication-latency-ms-avg", SOURCE_CONNECTOR_GROUP,
           "Average time it takes records to replicate from source to target cluster.", TOPIC_TAGS);
 
-  private static final MetricNameTemplate HISTOGRAM_LATENCY =
+  protected static final MetricNameTemplate HISTOGRAM_LATENCY =
       new MetricNameTemplate(
           "histogram-bucket-latency",
           SOURCE_CONNECTOR_GROUP,
@@ -64,7 +66,7 @@ public class MirrorJmxReporter extends AbstractMirusJmxReporter {
   // Map of topics to their metric objects
   private final Map<String, Sensor> topicSensors;
   private final Set<TopicPartition> topicPartitionSet;
-  private final Map<String, Map<Integer, Sensor>> histogramLatencySensors;
+  private final Map<String, Map<Long, Sensor>> histogramLatencySensors;
 
   private MirrorJmxReporter() {
     super(new Metrics());
@@ -100,11 +102,11 @@ public class MirrorJmxReporter extends AbstractMirusJmxReporter {
     topicPartitionSet.addAll(topicPartitions);
 
     for (TopicPartition topicPartition : topicPartitions) {
-      Map<Integer, Sensor> bucketSensors = new HashMap<>();
+      Map<Long, Sensor> bucketSensors = new HashMap<>();
       String topic = topicPartition.topic();
-      for (Map.Entry<Integer, String> entry : LATENCY_BUCKETS.entrySet()) {
-        bucketSensors.put(entry.getKey(), createHistogramSensor(topic, entry.getValue()));
-      }
+      LATENCY_BUCKETS.forEach(
+          (edgeMillis, bucketName) ->
+              bucketSensors.put(edgeMillis, createHistogramSensor(topic, bucketName)));
       histogramLatencySensors.put(topic, bucketSensors);
     }
   }
@@ -148,16 +150,13 @@ public class MirrorJmxReporter extends AbstractMirusJmxReporter {
       sensor.record((double) millis);
     }
 
-    Map<Integer, Sensor> bucketSensors = histogramLatencySensors.get(topic);
-    bucketSensors
-        .entrySet()
-        .stream()
-        .forEach(
-            sensorEntry -> {
-              if (millis > sensorEntry.getKey()) {
-                sensorEntry.getValue().record(1);
-              }
-            });
+    Map<Long, Sensor> bucketSensors = histogramLatencySensors.get(topic);
+    bucketSensors.forEach(
+        (edgeMillis, bucket) -> {
+          if (millis >= edgeMillis) {
+            bucket.record(1);
+          }
+        });
   }
 
   private Sensor createTopicSensor(String topic) {
