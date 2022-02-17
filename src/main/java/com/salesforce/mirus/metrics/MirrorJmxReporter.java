@@ -7,9 +7,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.apache.kafka.common.MetricNameTemplate;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.metrics.MetricConfig;
 import org.apache.kafka.common.metrics.Metrics;
 import org.apache.kafka.common.metrics.Sensor;
 import org.apache.kafka.common.metrics.stats.*;
+import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,9 +60,9 @@ public class MirrorJmxReporter extends AbstractMirusJmxReporter {
 
   protected static final MetricNameTemplate HISTOGRAM_LATENCY =
       new MetricNameTemplate(
-          "histogram-bucket-latency",
+          "replication-latency-histogram",
           SOURCE_CONNECTOR_GROUP,
-          "Metrics counting the number of records produced in each of a small set of latency buckets.",
+          "Cumulative histogram counting records delivered per second with latency exceeding a set of fixed bucket thresholds.",
           TOPIC_BUCKET_TAGS);
 
   // Map of topics to their metric objects
@@ -69,7 +71,7 @@ public class MirrorJmxReporter extends AbstractMirusJmxReporter {
   private final Map<String, Map<Long, Sensor>> histogramLatencySensors;
 
   private MirrorJmxReporter() {
-    super(new Metrics());
+    super(new Metrics(new MetricConfig(), new ArrayList<>(0), Time.SYSTEM, true));
     metrics.sensor("replication-latency");
 
     topicSensors = new HashMap<>();
@@ -152,9 +154,15 @@ public class MirrorJmxReporter extends AbstractMirusJmxReporter {
 
     Map<Long, Sensor> bucketSensors = histogramLatencySensors.get(topic);
     bucketSensors.forEach(
-        (edgeMillis, bucket) -> {
+        (edgeMillis, bucketSensor) -> {
           if (millis >= edgeMillis) {
-            bucket.record(1);
+            if (bucketSensor.hasExpired()) {
+              String bucket = LATENCY_BUCKETS.get(edgeMillis);
+              // explicitly replace the expired sensor with a new one
+              metrics.removeSensor(histogramLatencySensorName(topic, bucket));
+              bucketSensor = createHistogramSensor(topic, bucket);
+            }
+            bucketSensor.record(1);
           }
         });
   }
@@ -177,7 +185,15 @@ public class MirrorJmxReporter extends AbstractMirusJmxReporter {
     tags.put("topic", topic);
     tags.put("bucket", bucket);
 
-    Sensor sensor = metrics.sensor(histogramLatencySensorName(topic, bucket));
+    // bucket sensor will be expired after 5 mins if inactive
+    // this is to prevent inactive bucket sensors from reporting too many zero value metrics
+    Sensor sensor =
+        metrics.sensor(
+            histogramLatencySensorName(topic, bucket),
+            null,
+            TimeUnit.MINUTES.toSeconds(5),
+            Sensor.RecordingLevel.INFO,
+            null);
     sensor.add(
         metrics.metricInstance(HISTOGRAM_LATENCY, tags),
         new Rate(TimeUnit.SECONDS, new WindowedSum()));
