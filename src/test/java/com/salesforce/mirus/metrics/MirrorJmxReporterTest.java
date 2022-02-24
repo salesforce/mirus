@@ -3,7 +3,6 @@ package com.salesforce.mirus.metrics;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.metrics.Metrics;
 import org.junit.Assert;
@@ -28,8 +27,6 @@ public class MirrorJmxReporterTest {
     mirrorJmxReporter.addTopics(List.of(topicPartition));
 
     mirrorJmxReporter.recordMirrorLatency(TEST_TOPIC, 500);
-    mirrorJmxReporter.recordMirrorLatency(TEST_TOPIC, TimeUnit.MINUTES.toMillis(5));
-    mirrorJmxReporter.recordMirrorLatency(TEST_TOPIC, TimeUnit.MINUTES.toMillis(10));
 
     Map<String, String> tags = new LinkedHashMap<>();
     tags.put("topic", TEST_TOPIC);
@@ -44,6 +41,19 @@ public class MirrorJmxReporterTest {
                     MirrorJmxReporter.HISTOGRAM_LATENCY.description(),
                     tags))
             .metricValue();
-    Assert.assertNotNull(value);
+    Assert.assertTrue((double) value > 0);
+
+    tags.put("bucket", "12h");
+    value =
+        metrics
+            .metrics()
+            .get(
+                metrics.metricName(
+                    MirrorJmxReporter.HISTOGRAM_LATENCY.name(),
+                    MirrorJmxReporter.HISTOGRAM_LATENCY.group(),
+                    MirrorJmxReporter.HISTOGRAM_LATENCY.description(),
+                    tags))
+            .metricValue();
+    Assert.assertTrue((double) value == 0);
   }
 }

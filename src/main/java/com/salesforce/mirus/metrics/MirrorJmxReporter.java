@@ -68,7 +68,7 @@ public class MirrorJmxReporter extends AbstractMirusJmxReporter {
   // Map of topics to their metric objects
   private final Map<String, Sensor> topicSensors;
   private final Set<TopicPartition> topicPartitionSet;
-  private final Map<String, Map<Long, Sensor>> histogramLatencySensors;
+  private final Map<String, TreeMap<Long, Sensor>> histogramLatencySensors;
 
   private MirrorJmxReporter() {
     super(new Metrics(new MetricConfig(), new ArrayList<>(0), Time.SYSTEM, true));
@@ -104,7 +104,7 @@ public class MirrorJmxReporter extends AbstractMirusJmxReporter {
     topicPartitionSet.addAll(topicPartitions);
 
     for (TopicPartition topicPartition : topicPartitions) {
-      Map<Long, Sensor> bucketSensors = new HashMap<>();
+      TreeMap<Long, Sensor> bucketSensors = new TreeMap<>();
       String topic = topicPartition.topic();
       LATENCY_BUCKETS.forEach(
           (edgeMillis, bucketName) ->
@@ -152,19 +152,23 @@ public class MirrorJmxReporter extends AbstractMirusJmxReporter {
       sensor.record((double) millis);
     }
 
-    Map<Long, Sensor> bucketSensors = histogramLatencySensors.get(topic);
-    bucketSensors.forEach(
-        (edgeMillis, bucketSensor) -> {
-          if (millis >= edgeMillis) {
-            if (bucketSensor.hasExpired()) {
-              String bucket = LATENCY_BUCKETS.get(edgeMillis);
-              // explicitly replace the expired sensor with a new one
-              metrics.removeSensor(histogramLatencySensorName(topic, bucket));
-              bucketSensor = createHistogramSensor(topic, bucket);
-            }
-            bucketSensor.record(1);
-          }
-        });
+    TreeMap<Long, Sensor> bucketSensors = histogramLatencySensors.get(topic);
+    for (Map.Entry<Long, Sensor> sensorEntry : bucketSensors.entrySet()) {
+      long edgeMillis = sensorEntry.getKey();
+      Sensor bucketSensor = sensorEntry.getValue();
+      if (millis >= edgeMillis) {
+        if (bucketSensor.hasExpired()) {
+          String bucket = LATENCY_BUCKETS.get(edgeMillis);
+          // explicitly replace the expired sensor with a new one
+          metrics.removeSensor(histogramLatencySensorName(topic, bucket));
+          bucketSensor = createHistogramSensor(topic, bucket);
+        }
+        bucketSensor.record(1);
+      } else {
+        // bucket sensors are sorted by edgeMillis
+        break;
+      }
+    }
   }
 
   private Sensor createTopicSensor(String topic) {
