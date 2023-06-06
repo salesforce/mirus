@@ -13,7 +13,7 @@
         <dist.dir>${project.build.directory}/dist</dist.dir>
         <jackson.version>2.14.0</jackson.version>
         <java.numeric.version>11</java.numeric.version>
-        <kafka.version>2.6.2</kafka.version>
+        <kafka.version>3.4.1</kafka.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
