@@ -17,7 +17,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.metrics.Metrics;
-import org.apache.kafka.common.metrics.stats.Total;
+import org.apache.kafka.common.metrics.stats.CumulativeSum;
 import org.apache.kafka.common.metrics.stats.Value;
 import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.connect.runtime.Herder;
@@ -165,13 +165,13 @@ public class ConnectorJmxReporter extends AbstractMirusJmxReporter {
     if (!metrics.metrics().containsKey(totalAttemptsPerConnectorMetric)) {
       metrics
           .sensor(FAILED_TASK_ATTEMPTS_METRIC_NAME + connectorName)
-          .add(totalAttemptsPerConnectorMetric, new Total());
+          .add(totalAttemptsPerConnectorMetric, new CumulativeSum());
     }
 
     if (!metrics.metrics().containsKey(restartAttemptsPerConnectorMetric)) {
       metrics
           .sensor(FAILED_CONNECTOR_ATTEMPTS_METRIC_NAME + connectorName)
-          .add(restartAttemptsPerConnectorMetric, new Total());
+          .add(restartAttemptsPerConnectorMetric, new CumulativeSum());
     }
   }
 

@@ -15,7 +15,7 @@ import java.util.Set;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.metrics.Metrics;
 import org.apache.kafka.common.metrics.Sensor;
-import org.apache.kafka.common.metrics.stats.Total;
+import org.apache.kafka.common.metrics.stats.CumulativeSum;
 import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.connect.runtime.TaskStatus;
 import org.apache.kafka.connect.runtime.rest.entities.ConnectorStateInfo.TaskState;
@@ -64,7 +64,7 @@ public class TaskJmxReporter extends AbstractMirusJmxReporter {
 
     if (!metrics.metrics().containsKey(taskMetric)) {
       Sensor sensor = getSensor(taskId.toString());
-      sensor.add(taskMetric, new Total());
+      sensor.add(taskMetric, new CumulativeSum());
       logger.info("Added the task {} to the list of JMX metrics", taskId);
       logger.debug("Updated set of JMX metrics is {}", metrics.metrics());
     }
