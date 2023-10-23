@@ -59,7 +59,7 @@
             </exclusions>
         </dependency>
         <dependency>
-            <groupId>org.eclipse.jetty </groupId>
+            <groupId>org.eclipse.jetty</groupId>
             <artifactId>jetty-io</artifactId>
             <version>11.0.17</version>
         </dependency>
