@@ -94,6 +94,7 @@ public class TaskConfig {
   public Converter getKeyConverter() {
     Map<String, Object> conf = simpleConfig.originals();
     conf.put(StringConverterConfig.TYPE_CONFIG, ConverterType.KEY.getName());
+    conf.putAll(simpleConfig.originalsWithPrefix(SourceConfigDefinition.SOURCE_KEY_CONVERTER.key + "."));
 
     SimpleConfig config = new SimpleConfig(TaskConfigDefinition.configDef(), conf);
 
@@ -104,6 +105,7 @@ public class TaskConfig {
   public Converter getValueConverter() {
     Map<String, Object> conf = simpleConfig.originals();
     conf.put(StringConverterConfig.TYPE_CONFIG, ConverterType.VALUE.getName());
+    conf.putAll(simpleConfig.originalsWithPrefix(SourceConfigDefinition.SOURCE_VALUE_CONVERTER.key + "."));
 
     SimpleConfig config = new SimpleConfig(TaskConfigDefinition.configDef(), conf);
 
@@ -114,6 +116,7 @@ public class TaskConfig {
   public HeaderConverter getHeaderConverter() {
     Map<String, Object> conf = simpleConfig.originals();
     conf.put(StringConverterConfig.TYPE_CONFIG, ConverterType.HEADER.getName());
+    conf.putAll(simpleConfig.originalsWithPrefix(SourceConfigDefinition.SOURCE_HEADER_CONVERTER.key + "."));
 
     SimpleConfig config = new SimpleConfig(TaskConfigDefinition.configDef(), conf);
 
