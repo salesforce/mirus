@@ -4,16 +4,16 @@
 
     <groupId>com.salesforce.mirus</groupId>
     <artifactId>mirus</artifactId>
-    <version>0.6.13-SNAPSHOT</version>
+    <version>0.6.13</version>
 
     <name>Mirus</name>
     <description>Apache Kafka data replication tool based on Kafka Connect</description>
 
     <properties>
         <dist.dir>${project.build.directory}/dist</dist.dir>
-        <jackson.version>2.14.0</jackson.version>
+        <jackson.version>2.16.2</jackson.version>
         <java.numeric.version>11</java.numeric.version>
-        <kafka.version>3.3.2</kafka.version>
+        <kafka.version>3.9.1</kafka.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <slf4j.version>2.0.9</slf4j.version>
     </properties>

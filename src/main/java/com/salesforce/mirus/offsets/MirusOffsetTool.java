@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.apache.kafka.common.utils.Utils;
@@ -22,6 +23,7 @@ import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.runtime.distributed.DistributedConfig;
 import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.KafkaOffsetBackingStore;
+import org.apache.kafka.connect.util.SharedTopicAdmin;
 
 /**
  * Tool for reading and writing Mirus offsets
@@ -82,13 +84,17 @@ public class MirusOffsetTool {
             ? Utils.propsToStringMap(Utils.loadProps(args.propertiesFile))
             : Collections.emptyMap();
     final DistributedConfig config = new DistributedConfig(properties);
-    final KafkaOffsetBackingStore offsetBackingStore = new KafkaOffsetBackingStore();
-    offsetBackingStore.configure(config);
 
     // Avoid initializing the entire Kafka Connect plugin system by assuming the
     // internal.[key|value].converter is org.apache.kafka.connect.json.JsonConverter
     final Converter internalConverter = new JsonConverter();
     internalConverter.configure(config.originalsWithPrefix("internal.key.converter."), true);
+
+    Map<String, Object> adminProps = new HashMap<>(config.originals());
+    SharedTopicAdmin sharedAdmin = new SharedTopicAdmin(adminProps);
+    final KafkaOffsetBackingStore offsetBackingStore =
+        new KafkaOffsetBackingStore(sharedAdmin, () -> "mirus-offset-tool-", internalConverter);
+    offsetBackingStore.configure(config);
 
     final OffsetSetter offsetSetter = new OffsetSetter(internalConverter, offsetBackingStore);
     final OffsetFetcher offsetFetcher = new OffsetFetcher(config, internalConverter);

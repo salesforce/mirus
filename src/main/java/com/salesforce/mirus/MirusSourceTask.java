@@ -22,7 +22,6 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.header.Headers;
-import org.apache.kafka.common.utils.SystemTime;
 import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.common.utils.Utils;
 import org.apache.kafka.connect.data.SchemaAndValue;
@@ -78,7 +77,7 @@ public class MirusSourceTask extends SourceTask {
   private final Set<TopicPartition> loggingFlags = new HashSet<>();
 
   protected AtomicBoolean shutDown = new AtomicBoolean(false);
-  protected Time time = new SystemTime();
+  protected Time time = Time.SYSTEM;
   private long commitFailureRestartMs;
 
   @SuppressWarnings("unused")
