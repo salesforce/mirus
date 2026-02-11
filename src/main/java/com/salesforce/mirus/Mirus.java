@@ -27,6 +27,8 @@ import org.apache.kafka.common.utils.Exit;
 import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.common.utils.Utils;
 import org.apache.kafka.connect.connector.policy.ConnectorClientConfigOverridePolicy;
+import org.apache.kafka.connect.json.JsonConverter;
+import org.apache.kafka.connect.json.JsonConverterConfig;
 import org.apache.kafka.connect.runtime.Connect;
 import org.apache.kafka.connect.runtime.Worker;
 import org.apache.kafka.connect.runtime.WorkerConfig;
@@ -34,7 +36,8 @@ import org.apache.kafka.connect.runtime.WorkerConfigTransformer;
 import org.apache.kafka.connect.runtime.distributed.DistributedConfig;
 import org.apache.kafka.connect.runtime.distributed.DistributedHerder;
 import org.apache.kafka.connect.runtime.isolation.Plugins;
-import org.apache.kafka.connect.runtime.rest.RestServer;
+import org.apache.kafka.connect.runtime.rest.ConnectRestServer;
+import org.apache.kafka.connect.runtime.rest.RestClient;
 import org.apache.kafka.connect.storage.ConfigBackingStore;
 import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.KafkaConfigBackingStore;
@@ -148,10 +151,15 @@ public class Mirus {
 
     MirusConfig mirusConfig = new MirusConfig(workerProps);
 
-    String kafkaClusterId = ConnectUtils.lookupKafkaClusterId(distributedConfig);
+    String kafkaClusterId = distributedConfig.kafkaClusterId();
     log.debug("Kafka cluster ID: {}", kafkaClusterId);
 
-    RestServer rest = new RestServer(configWithClientIdSuffix(workerProps, "rest"));
+    String clientIdBase = ConnectUtils.clientIdBase(distributedConfig);
+
+    RestClient restClient = new RestClient(distributedConfig);
+    ConnectRestServer rest =
+        new ConnectRestServer(
+            distributedConfig.rebalanceTimeout(), restClient, distributedConfig.originals());
     rest.initializeServer();
 
     URI advertisedUrl = rest.advertisedUrl();
@@ -160,7 +168,14 @@ public class Mirus {
     Map<String, Object> adminProps = new HashMap<>(workerProps);
     ConnectUtils.addMetricsContextProperties(adminProps, distributedConfig, kafkaClusterId);
     SharedTopicAdmin sharedAdmin = new SharedTopicAdmin(adminProps);
-    KafkaOffsetBackingStore offsetBackingStore = new KafkaOffsetBackingStore(sharedAdmin);
+    KafkaOffsetBackingStore offsetBackingStore =
+        new KafkaOffsetBackingStore(
+            sharedAdmin,
+            () -> clientIdBase,
+            plugins.newInternalConverter(
+                true,
+                JsonConverter.class.getName(),
+                Collections.singletonMap(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, "false")));
     offsetBackingStore.configure(configWithClientIdSuffix(workerProps, "offset"));
 
     WorkerConfig workerConfigs = configWithClientIdSuffix(workerProps, "worker");
@@ -184,7 +199,7 @@ public class Mirus {
 
     Converter internalValueConverter = worker.getInternalValueConverter();
     StatusBackingStore statusBackingStore =
-        new KafkaStatusBackingStore(time, internalValueConverter, sharedAdmin);
+        new KafkaStatusBackingStore(time, internalValueConverter, sharedAdmin, clientIdBase);
     statusBackingStore.configure(configWithClientIdSuffix(workerProps, "status"));
 
     ConfigBackingStore configBackingStore =
@@ -192,7 +207,8 @@ public class Mirus {
             internalValueConverter,
             configWithClientIdSuffix(workerProps, "config"),
             configTransformer,
-            sharedAdmin);
+            sharedAdmin,
+            clientIdBase);
 
     DistributedHerder herder =
         new DistributedHerder(
@@ -203,7 +219,9 @@ public class Mirus {
             statusBackingStore,
             configBackingStore,
             advertisedUrl.toString(),
+            restClient,
             connectorClientConfigOverridePolicy,
+            Collections.emptyList(),
             sharedAdmin);
 
     // Initialize HerderStatusMonitor
