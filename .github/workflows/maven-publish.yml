@@ -32,7 +32,7 @@ jobs:
 
     - name: Set up Apache Maven Central
       uses: actions/setup-java@v2
-      with: # running setup-java again overwrites the settings.xml
+      with:
         distribution: 'zulu'
         java-version: '11'
         server-id: sonatype-nexus-staging
@@ -41,6 +41,10 @@ jobs:
         gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
         gpg-passphrase: MAVEN_GPG_PASSPHRASE
         settings-path: ${{ github.workspace }}/generated-settings
+      env:
+        MAVEN_USERNAME: ${{ secrets.MAVEN_CENTRAL_USER }}
+        MAVEN_CENTRAL_TOKEN: ${{ secrets.MAVEN_CENTRAL_TOKEN }}
+        MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
 
     - name: Release to Apache Maven Central
       run: mvn deploy -s $GITHUB_WORKSPACE/generated-settings/settings.xml
