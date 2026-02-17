@@ -41,13 +41,13 @@ jobs:
       with:
         distribution: 'zulu'
         java-version: '11'
-        server-id: sonatype-nexus-staging # Must match pom.xml <distributionManagement><repository><id>
+        server-id: central # Must match pom.xml <distributionManagement><repository><id>
         server-username: MAVEN_USERNAME # Env var name for username
         server-password: MAVEN_PASSWORD # Env var name for password
         gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }} # GPG key content (not env var name)
         gpg-passphrase: MAVEN_GPG_PASSPHRASE # Env var name for GPG passphrase
         settings-path: ${{ github.workspace }}/generated-settings
 
-    # Build, sign, and deploy to Maven Central via Sonatype OSSRH
+    # Build, sign, and deploy to Maven Central via Central Portal
     - name: Deploy to Maven Central
       run: mvn deploy -s $GITHUB_WORKSPACE/generated-settings/settings.xml
