@@ -1,40 +1,53 @@
-# This workflow will build a package using Maven and then publish it to GitHub packages when a release is created
-# For more information see: https://github.com/actions/setup-java/blob/main/docs/advanced-usage.md#apache-maven-with-a-settings-path
+# Publishes to Maven Central (Sonatype) when you push a tag v* (e.g. v0.6.17).
+# Trigger: push tag v* OR run manually via Actions tab ("Run workflow").
+# For a production release: set pom <version> to a release (e.g. 0.6.17, no -SNAPSHOT), commit, then tag and push: git tag v0.6.17 && git push origin v0.6.17
 
 name: Maven Package
 
 on:
   push:
     tags:
-      - 'v*' # Push events to matching v*
+      - 'v*'
   workflow_dispatch: {}
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    
+    # Set env vars once at job level so all steps can use them
+    env:
+      MAVEN_USERNAME: ${{ secrets.MAVEN_CENTRAL_USER }}
+      MAVEN_PASSWORD: ${{ secrets.MAVEN_CENTRAL_TOKEN }}
+      MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
 
     steps:
     - uses: actions/checkout@v2
+
+    - name: Require release version when triggered by tag
+      if: startsWith(github.ref, 'refs/tags/')
+      run: |
+        V=$(grep -oP '(?<=<version>)[^<]+' pom.xml | head -1)
+        if [[ "$V" == *-SNAPSHOT ]]; then
+          echo "::error::Publishing from a tag requires a release version in pom.xml (no -SNAPSHOT). Current: $V"
+          exit 1
+        fi
+
+    # Configure Maven settings.xml with Sonatype credentials and GPG signing
     - name: Set up Apache Maven Central
       uses: actions/setup-java@v2
-      with: # running setup-java again overwrites the settings.xml
+      with:
         distribution: 'zulu'
         java-version: '11'
-        server-username: MAVEN_USERNAME # env variable for username in deploy
-        server-password: MAVEN_CENTRAL_TOKEN # env variable for token in deploy
-        gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }} # Value of the GPG private key to import
-        gpg-passphrase:  MAVEN_GPG_PASSPHRASE # env variable for GPG private key passphrase
+        server-id: sonatype-nexus-staging # Must match pom.xml <distributionManagement><repository><id>
+        server-username: MAVEN_USERNAME # Env var name for username
+        server-password: MAVEN_PASSWORD # Env var name for password
+        gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }} # GPG key content (not env var name)
+        gpg-passphrase: MAVEN_GPG_PASSPHRASE # Env var name for GPG passphrase
         settings-path: ${{ github.workspace }}/generated-settings
 
-    - name: Release to Apache Maven Central
-      run: mvn deploy -s $GITHUB_WORKSPACE/settings.xml
-      env:
-        SONATYPE_USERNAME:    ${{ secrets.MAVEN_CENTRAL_USER   }}
-        SONATYPE_PASSWORD:    ${{ secrets.MAVEN_CENTRAL_TOKEN  }}
-        MAVEN_USERNAME:       ${{ secrets.MAVEN_CENTRAL_USER   }} # SONATYPE_USERNAME
-        MAVEN_CENTRAL_TOKEN:  ${{ secrets.MAVEN_CENTRAL_TOKEN  }} # SONATYPE_PASSWORD
-        MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+    # Build, sign, and deploy to Maven Central via Sonatype OSSRH
+    - name: Deploy to Maven Central
+      run: mvn deploy -s $GITHUB_WORKSPACE/generated-settings/settings.xml

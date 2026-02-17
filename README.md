@@ -255,8 +255,19 @@ objectName="mirus:type=connector-task-metrics,connector=*" attribute="task-faile
 
 ## Developer Info
 
-To preform a release: `mvn release:prepare release:perform`
-GPG Keys may need to be passed to maven with `-Darguments='-Dgpg.passphrase= -Dgpg.keyname=55Z32RD1'`
+### Releasing to Maven Central (GitHub Actions)
+
+1. In `pom.xml`, set `<version>` to a **release** value (e.g. `0.6.17`) — **no** `-SNAPSHOT`.
+2. Commit and push to `master`.
+3. Tag that commit and push the tag:  
+   `git tag v0.6.17 && git push origin v0.6.17`
+4. The **Maven Package** workflow runs on tag push and deploys to Maven Central. Ensure repo secrets are set: `MAVEN_CENTRAL_USER`, `MAVEN_CENTRAL_TOKEN`, `MAVEN_GPG_PRIVATE_KEY`, `MAVEN_GPG_PASSPHRASE`.
+5. After the release, bump the version back to the next SNAPSHOT (e.g. `0.6.18-SNAPSHOT`) on `master`.
+
+### Releasing locally
+
+To perform a release locally: `mvn release:prepare release:perform`  
+GPG keys may need to be passed to Maven with `-Darguments='-Dgpg.passphrase= -Dgpg.keyname=55Z32RD1'`
 
 # Discussion
 
