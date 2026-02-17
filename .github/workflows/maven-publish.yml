@@ -12,11 +12,16 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    
+    # Set env vars once at job level so all steps can use them
+    env:
+      MAVEN_USERNAME: ${{ secrets.MAVEN_CENTRAL_USER }}
+      MAVEN_PASSWORD: ${{ secrets.MAVEN_CENTRAL_TOKEN }}
+      MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
 
     steps:
     - uses: actions/checkout@v2
@@ -30,27 +35,19 @@ jobs:
           exit 1
         fi
 
+    # Configure Maven settings.xml with Sonatype credentials and GPG signing
     - name: Set up Apache Maven Central
       uses: actions/setup-java@v2
       with:
         distribution: 'zulu'
         java-version: '11'
-        server-id: sonatype-nexus-staging
-        server-username: MAVEN_USERNAME
-        server-password: MAVEN_CENTRAL_TOKEN
-        gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
-        gpg-passphrase: MAVEN_GPG_PASSPHRASE
+        server-id: sonatype-nexus-staging # Must match pom.xml <distributionManagement><repository><id>
+        server-username: MAVEN_USERNAME # Env var name for username
+        server-password: MAVEN_PASSWORD # Env var name for password
+        gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }} # GPG key content (not env var name)
+        gpg-passphrase: MAVEN_GPG_PASSPHRASE # Env var name for GPG passphrase
         settings-path: ${{ github.workspace }}/generated-settings
-      env:
-        MAVEN_USERNAME: ${{ secrets.MAVEN_CENTRAL_USER }}
-        MAVEN_CENTRAL_TOKEN: ${{ secrets.MAVEN_CENTRAL_TOKEN }}
-        MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
 
-    - name: Release to Apache Maven Central
+    # Build, sign, and deploy to Maven Central via Sonatype OSSRH
+    - name: Deploy to Maven Central
       run: mvn deploy -s $GITHUB_WORKSPACE/generated-settings/settings.xml
-      env:
-        SONATYPE_USERNAME:    ${{ secrets.MAVEN_CENTRAL_USER   }}
-        SONATYPE_PASSWORD:    ${{ secrets.MAVEN_CENTRAL_TOKEN  }}
-        MAVEN_USERNAME:       ${{ secrets.MAVEN_CENTRAL_USER   }} # SONATYPE_USERNAME
-        MAVEN_CENTRAL_TOKEN:  ${{ secrets.MAVEN_CENTRAL_TOKEN  }} # SONATYPE_PASSWORD
-        MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
