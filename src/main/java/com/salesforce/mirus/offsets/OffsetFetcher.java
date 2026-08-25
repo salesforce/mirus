@@ -27,6 +27,7 @@ import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.util.Callback;
 import org.apache.kafka.connect.util.ConvertingFutureCallback;
 import org.apache.kafka.connect.util.KafkaBasedLog;
+import org.apache.kafka.connect.util.TopicAdmin;
 
 /**
  * Grabs all records from a Kafka Connect offset storage topic. Wraps KafkaBasedLog and requires the
@@ -40,7 +41,10 @@ class OffsetFetcher {
 
   private boolean started = false;
 
-  OffsetFetcher(final WorkerConfig config, Converter internalConverter) {
+  OffsetFetcher(
+      final WorkerConfig config,
+      Converter internalConverter,
+      java.util.function.Supplier<TopicAdmin> topicAdminSupplier) {
     String topic = config.getString(DistributedConfig.OFFSET_STORAGE_TOPIC_CONFIG);
     if ("".equals(topic)) {
       throw new ConfigException("Offset storage topic must be specified");
@@ -67,7 +71,13 @@ class OffsetFetcher {
         };
     this.offsetLog =
         new KafkaBasedLog<>(
-            topic, producerProps, consumerProps, consumedCallback, Time.SYSTEM, null);
+            topic,
+            producerProps,
+            consumerProps,
+            topicAdminSupplier,
+            consumedCallback,
+            Time.SYSTEM,
+            null);
     this.internalConverter = internalConverter;
   }
 

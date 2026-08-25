@@ -97,7 +97,7 @@ public class MirusOffsetTool {
     offsetBackingStore.configure(config);
 
     final OffsetSetter offsetSetter = new OffsetSetter(internalConverter, offsetBackingStore);
-    final OffsetFetcher offsetFetcher = new OffsetFetcher(config, internalConverter);
+    final OffsetFetcher offsetFetcher = new OffsetFetcher(config, internalConverter, sharedAdmin);
     final OffsetSerDe offsetSerDe = OffsetSerDeFactory.create(args.format);
 
     return new MirusOffsetTool(args, offsetFetcher, offsetSetter, offsetSerDe);

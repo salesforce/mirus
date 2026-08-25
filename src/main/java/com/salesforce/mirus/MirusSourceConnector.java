@@ -20,7 +20,6 @@ import java.util.Map;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.source.SourceConnector;
-import org.eclipse.jetty.io.RuntimeIOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +48,7 @@ public class MirusSourceConnector extends SourceConnector {
       URL url = Resources.getResource(MirusSourceConnector.class, "mirus-version.txt");
       return Resources.toString(url, Charsets.UTF_8);
     } catch (IOException e) {
-      throw new RuntimeIOException(e);
+      throw new java.io.UncheckedIOException(e);
     }
   }
 

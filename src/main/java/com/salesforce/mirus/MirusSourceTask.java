@@ -11,6 +11,7 @@ package com.salesforce.mirus;
 import com.salesforce.mirus.config.TaskConfig;
 import com.salesforce.mirus.config.TaskConfig.ReplayPolicy;
 import com.salesforce.mirus.metrics.MirrorJmxReporter;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -195,7 +196,8 @@ public class MirusSourceTask extends SourceTask {
       }
 
       checkCommitFailure();
-      ConsumerRecords<byte[], byte[]> result = consumer.poll(consumerPollTimeoutMillis);
+      ConsumerRecords<byte[], byte[]> result =
+          consumer.poll(Duration.ofMillis(consumerPollTimeoutMillis));
       logger.trace("Got {} records", result.count());
       if (!result.isEmpty()) {
         lastNewRecordTime = time.milliseconds();

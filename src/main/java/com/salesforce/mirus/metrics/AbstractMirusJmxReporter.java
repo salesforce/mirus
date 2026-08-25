@@ -13,10 +13,12 @@ import java.util.Set;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.MetricNameTemplate;
 import org.apache.kafka.common.metrics.JmxReporter;
+import org.apache.kafka.common.metrics.KafkaMetricsContext;
 import org.apache.kafka.common.metrics.Metrics;
 
 abstract class AbstractMirusJmxReporter implements AutoCloseable {
 
+  static final String JMX_DOMAIN = "mirus";
   static final String CONNECTOR_KEY = "connector";
   static final String TASK_KEY = "task";
 
@@ -24,7 +26,9 @@ abstract class AbstractMirusJmxReporter implements AutoCloseable {
 
   AbstractMirusJmxReporter(Metrics metrics) {
     this.metrics = metrics;
-    this.metrics.addReporter(new JmxReporter("mirus"));
+    JmxReporter jmxReporter = new JmxReporter();
+    jmxReporter.contextChange(new KafkaMetricsContext(JMX_DOMAIN));
+    this.metrics.addReporter(jmxReporter);
   }
 
   protected MetricName getMetric(

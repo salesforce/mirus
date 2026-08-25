@@ -4,16 +4,16 @@
 
     <groupId>com.salesforce.mirus</groupId>
     <artifactId>mirus</artifactId>
-    <version>0.6.18</version>
+    <version>0.7.0</version>
 
     <name>Mirus</name>
     <description>Apache Kafka data replication tool based on Kafka Connect</description>
 
     <properties>
         <dist.dir>${project.build.directory}/dist</dist.dir>
-        <jackson.version>2.16.2</jackson.version>
-        <java.numeric.version>11</java.numeric.version>
-        <kafka.version>3.9.1</kafka.version>
+        <jackson.version>2.21.2</jackson.version>
+        <java.numeric.version>17</java.numeric.version>
+        <kafka.version>4.2.1</kafka.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <slf4j.version>2.0.9</slf4j.version>
     </properties>
@@ -58,10 +58,12 @@
                 </exclusion>
             </exclusions>
         </dependency>
+        <!-- Plugins.newPlugin (used in Mirus.java) references VersionRange, so this must be on the
+             compile classpath. Keep the version aligned with connect-runtime's transitive one. -->
         <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-io</artifactId>
-            <version>11.0.17</version>
+            <groupId>org.apache.maven</groupId>
+            <artifactId>maven-artifact</artifactId>
+            <version>3.9.15</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -112,9 +114,32 @@
         </pluginManagement>
         <plugins>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>enforce-maven-artifact-version</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireUpperBoundDeps>
+                                    <includes>
+                                        <include>org.apache.maven:maven-artifact</include>
+                                        <include>com.fasterxml.jackson.core:jackson-databind</include>
+                                    </includes>
+                                </requireUpperBoundDeps>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.5</version>
+                <version>0.8.12</version>
                 <executions>
                     <execution>
                         <goals>
