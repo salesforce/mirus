@@ -9,8 +9,12 @@
 package com.salesforce.mirus.metrics;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
+import java.lang.management.ManagementFactory;
 import java.util.HashMap;
+import java.util.Set;
+import javax.management.ObjectName;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.metrics.Metrics;
 import org.apache.kafka.connect.runtime.rest.entities.ConnectorStateInfo.TaskState;
@@ -35,7 +39,7 @@ public class TaskJmxReporterTest {
 
   private void assertFailedMetricCount(String state, int task, Double expected) {
     ConnectorTaskId taskId = new ConnectorTaskId(CONNECTOR_NAME, task);
-    TaskState taskState = new TaskState(task, state, "worker1", "Test");
+    TaskState taskState = new TaskState(task, state, "worker1", "Test", null);
     taskJmxReporter.updateMetrics(taskId, taskState);
 
     HashMap<String, String> tags = new HashMap<>();
@@ -47,6 +51,18 @@ public class TaskJmxReporterTest {
         metrics
             .metric(new MetricName("task-failed-restart-attempts-count", GROUP, "", tags))
             .metricValue());
+  }
+
+  @Test
+  public void testMBeanRegisteredUnderMirusDomain() throws Exception {
+    taskJmxReporter.updateMetrics(
+        new ConnectorTaskId(CONNECTOR_NAME, 7),
+        new TaskState(7, "RUNNING", "worker1", "Test", null));
+
+    ObjectName pattern = new ObjectName("mirus:type=" + GROUP + ",*");
+    Set<ObjectName> names = ManagementFactory.getPlatformMBeanServer().queryNames(pattern, null);
+
+    assertFalse("Expected MBean in 'mirus' JMX domain", names.isEmpty());
   }
 
   @Test

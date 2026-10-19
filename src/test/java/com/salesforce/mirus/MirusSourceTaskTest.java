@@ -24,6 +24,7 @@ import com.salesforce.mirus.config.TaskConfig;
 import com.salesforce.mirus.config.TaskConfig.ReplayPolicy;
 import com.salesforce.mirus.config.TaskConfigDefinition;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -32,6 +33,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -44,6 +46,7 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.apache.kafka.common.metrics.PluginMetrics;
 import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.connect.data.ConnectSchema;
@@ -96,6 +99,11 @@ public class MirusSourceTaskTest {
               }
             };
           }
+
+          @Override
+          public PluginMetrics pluginMetrics() {
+            return null;
+          }
         };
     mirusSourceTask.initialize(context);
     mirusSourceTask.start(mockTaskProperties(ReplayPolicy.FILTER));
@@ -130,7 +138,6 @@ public class MirusSourceTaskTest {
 
   private ConsumerRecord<byte[], byte[]> newConsumerRecord(
       String topic, int partition, int offset, Long timestamp, Headers headers) {
-    final Long checksum = 1234L;
     final byte[] key = "test-key".getBytes(StandardCharsets.UTF_8);
     final int serializedKeySize = key.length;
     final byte[] value = "test-value".getBytes(StandardCharsets.UTF_8);
@@ -141,12 +148,12 @@ public class MirusSourceTaskTest {
         offset,
         timestamp,
         TimestampType.CREATE_TIME,
-        checksum,
         serializedKeySize,
         serializedValueSize,
         key,
         value,
-        headers);
+        headers,
+        Optional.empty());
   }
 
   @Test
@@ -477,7 +484,8 @@ public class MirusSourceTaskTest {
   @Test(expected = KafkaException.class)
   public void testConsumerClosedOnException() {
     Consumer localConsumer = mock(Consumer.class);
-    when(localConsumer.poll(eq(1000L))).thenThrow(new KafkaException("Exception in poll"));
+    when(localConsumer.poll(eq(Duration.ofMillis(1000))))
+        .thenThrow(new KafkaException("Exception in poll"));
     MirusSourceTask mirusSourceTask = new MirusSourceTask(consumerProperties -> localConsumer);
     mirusSourceTask.initialize(context);
     mirusSourceTask.start(mockTaskProperties(ReplayPolicy.IGNORE));
