@@ -11,9 +11,9 @@
 
     <properties>
         <dist.dir>${project.build.directory}/dist</dist.dir>
-        <jackson.version>2.21.2</jackson.version>
+        <jackson.version>2.21.8</jackson.version>
         <java.numeric.version>17</java.numeric.version>
-        <kafka.version>4.2.1</kafka.version>
+        <kafka.version>4.4.0</kafka.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <slf4j.version>2.0.9</slf4j.version>
     </properties>
@@ -325,7 +325,7 @@
                         <configuration>
                             <target>
                                 <chmod dir="${dist.dir}" perm="700">
-                                    <include name="**/*.sh" />
+                                    <include name="**/*.sh"/>
                                 </chmod>
                             </target>
                         </configuration>
@@ -414,7 +414,7 @@
                                                 </goals>
                                             </pluginExecutionFilter>
                                             <action>
-                                                <ignore />
+                                                <ignore/>
                                             </action>
                                         </pluginExecution>
                                         <pluginExecution>
@@ -427,7 +427,7 @@
                                                 </goals>
                                             </pluginExecutionFilter>
                                             <action>
-                                                <ignore />
+                                                <ignore/>
                                             </action>
                                         </pluginExecution>
                                     </pluginExecutions>
@@ -481,10 +481,10 @@
                                 <phase>package</phase>
                                 <configuration>
                                     <target>
-                                        <copy file="${project.build.directory}/${project.artifactId}-${project.version}-shaded.jar" tofile="${dist.dir}/mirus.jar" />
+                                        <copy file="${project.build.directory}/${project.artifactId}-${project.version}-shaded.jar" tofile="${dist.dir}/mirus.jar"/>
                                         <!-- Grant execute permission to all shell scripts in package dir by setting it to 755 -->
                                         <chmod dir="${dist.dir}" perm="755">
-                                            <include name="**/*.sh" />
+                                            <include name="**/*.sh"/>
                                         </chmod>
                                     </target>
                                 </configuration>
